@@ -35,6 +35,9 @@ build/
 ### Logs ###
 logs/
 
-### Claude ###
+### Clarence ###
 .claude/
 CLAUDE.md
+
+### 凭证保护 ###
+src/main/resources/application.properties

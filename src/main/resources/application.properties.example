@@ -1,0 +1,10 @@
+# 服务端口
+server.port=8082
+
+# 企业微信配置（请替换为你自己的 corpid 和 corpsecret）
+wechat.work.corpid=请替换为你的企业ID
+wechat.work.corpsecret=请替换为你的应用密钥
+
+# 文件上传大小限制
+spring.servlet.multipart.max-file-size=10MB
+spring.servlet.multipart.max-request-size=10MB
