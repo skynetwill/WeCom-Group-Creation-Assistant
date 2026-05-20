@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>企业微信批量建群工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: "微软雅黑", "Microsoft YaHei", sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #0181ff, #0066cc);
+            color: white;
+            padding: 24px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .header h1 { font-size: 22px; }
+        .header p { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+
+        .container { max-width: 720px; margin: 0 auto; padding: 20px 16px; }
+
+        .tabs {
+            display: flex;
+            gap: 0;
+            background: white;
+            border-radius: 10px 10px 0 0;
+            overflow: hidden;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 14px 8px;
+            border: none;
+            background: #eef1f6;
+            color: #666;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .tab-btn.active {
+            background: white;
+            color: #0181ff;
+            font-weight: bold;
+            border-bottom: 2px solid #0181ff;
+        }
+        .tab-btn:hover { background: #f0f4ff; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        .card {
+            background: white;
+            border-radius: 0 0 10px 10px;
+            padding: 24px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 6px;
+            font-size: 14px;
+        }
+        .form-group input[type="text"],
+        .form-group input[type="file"] {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.2s;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #0181ff;
+            box-shadow: 0 0 0 3px rgba(1,129,255,0.1);
+        }
+        .file-hint { font-size: 12px; color: #999; margin-top: 4px; }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        .btn-primary { background: #0181ff; color: white; }
+        .btn-primary:hover { background: #0066cc; }
+        .btn-primary:disabled { background: #aac8e8; cursor: not-allowed; }
+        .btn-secondary {
+            background: #f0f4ff;
+            color: #0181ff;
+            border: 1px solid #0181ff;
+            margin-top: 12px;
+        }
+        .btn-secondary:hover { background: #e0eaff; }
+
+        .result-box {
+            margin-top: 16px;
+            padding: 16px;
+            border-radius: 6px;
+            font-size: 14px;
+            line-height: 1.8;
+            word-break: break-all;
+            display: none;
+        }
+        .result-box.show {
+            display: block;
+        }
+        .result-box.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #a5d6a7;
+        }
+        .result-box.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ef9a9a;
+        }
+        .result-box.loading {
+            background: #e3f2fd;
+            color: #1565c0;
+            border: 1px solid #90caf9;
+        }
+        .result-box .info-line { font-size: 13px; color: #666; margin-top: 4px; }
+
+        .guide-step {
+            padding: 14px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .guide-step:last-child { border-bottom: none; }
+        .guide-step h3 { font-size: 16px; color: #0181ff; margin-bottom: 6px; }
+        .guide-step p, .guide-step li { font-size: 14px; color: #555; line-height: 1.8; }
+        .guide-step ul { padding-left: 20px; }
+        .guide-step code {
+            background: #f0f4ff;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 13px;
+            color: #0181ff;
+        }
+
+        .faq-item { padding: 12px 0; border-bottom: 1px solid #f0f0f0; }
+        .faq-item:last-child { border-bottom: none; }
+        .faq-q { font-weight: bold; color: #333; font-size: 14px; }
+        .faq-a { color: #666; font-size: 14px; margin-top: 4px; }
+
+        .template-card {
+            padding: 16px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 14px;
+        }
+        .template-card h3 { font-size: 15px; color: #333; margin-bottom: 6px; }
+        .template-card p { font-size: 13px; color: #888; margin-bottom: 12px; }
+
+        .btn-sm { padding: 8px 20px; font-size: 14px; border-radius: 5px; }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>企业微信批量建群工具</h1>
+        <p>支持 CSV / Excel 文件上传，一键批量创建企业微信群聊</p>
+    </div>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="create">建群操作</button>
+            <button class="tab-btn" data-tab="guide">操作指南</button>
+            <button class="tab-btn" data-tab="template">模板下载</button>
+        </div>
+
+        <!-- Tab 1: 建群操作 -->
+        <div id="tab-create" class="tab-content active">
+            <div class="card">
+                <form id="groupForm">
+                    <input type="hidden" name="userId" id="userId" value="">
+
+                    <div class="form-group">
+                        <label for="groupName">群聊名称</label>
+                        <input type="text" id="groupName" name="groupName" placeholder="请输入群聊名称" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ownerId">群主 ID（企业微信 userid）</label>
+                        <input type="text" id="ownerId" name="ownerId" placeholder="请输入群主的企业微信 userid" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="file">成员名单文件</label>
+                        <input type="file" id="file" name="file" accept=".csv,.xlsx,.xls" required>
+                        <div class="file-hint" style="font-size:13px;color:#e65100;font-weight:bold;">
+                            ⚠ 重要：群主的 userid 也必须写进名单里！至少要有 2 人（含群主）
+                        </div>
+                        <div class="file-hint">支持 .csv、.xlsx、.xls 格式，第一列需为 userid</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                        一键创建群聊
+                    </button>
+                </form>
+                <div id="resultBox" class="result-box"></div>
+            </div>
+        </div>
+
+        <!-- Tab 2: 操作指南 -->
+        <div id="tab-guide" class="tab-content">
+            <div class="card">
+                <div class="guide-step">
+                    <h3>一、准备成员名单</h3>
+                    <p>创建一个 <code>.csv</code> 或 <code>.xlsx</code> 文件，第一列为成员的企业微信 userid，第一行为表头 <code>userid</code>（系统会自动跳过表头）。</p>
+                    <p style="margin-top:8px;">示例格式：</p>
+                    <pre style="background:#f5f6fa;padding:10px;border-radius:4px;margin-top:6px;font-size:13px;">userid
+zhangsan
+lisi
+wangwu</pre>
+                </div>
+                <div class="guide-step">
+                    <h3>二、填写建群信息</h3>
+                    <ul>
+                        <li><strong>群聊名称</strong>：给新群取一个名称</li>
+                        <li><strong>群主 ID</strong>：群主的企业微信 userid，该成员将自动成为群主</li>
+                        <li><strong>成员名单</strong>：上传准备好的成员名单文件</li>
+                    </ul>
+                </div>
+                <div class="guide-step">
+                    <h3>三、创建群聊</h3>
+                    <p>点击"一键创建群聊"按钮，系统将自动解析文件并调用企业微信API创建群聊，页面下方会显示创建结果（成功/失败详情）。</p>
+                </div>
+
+                <h3 style="margin-top:20px;color:#0181ff;">常见问题 FAQ</h3>
+                <div class="faq-item">
+                    <div class="faq-q">Q: 支持哪些文件格式？</div>
+                    <div class="faq-a">A: 支持 .csv、.xlsx（新版 Excel）和 .xls（旧版 Excel）三种格式。</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-q">Q: 群聊最大成员数是多少？</div>
+                    <div class="faq-a">A: 企业微信群聊最多支持 2000 人（含群主）。</div>
+                </div>
+                <div class="faq-item">
+                    <div class="faq-q">Q: 建群失败怎么办？</div>
+                    <div class="faq-a">A: 请检查：群主ID是否正确、文件格式是否符合要求。页面会显示企微返回的具体错误信息。</div>
+                </div>
+
+                <a href="/api/guide" style="text-decoration:none;">
+                    <button class="btn btn-secondary btn-sm" style="margin-top:16px;width:auto;">
+                        下载完整操作指南 (Word文档)
+                    </button>
+                </a>
+            </div>
+        </div>
+
+        <!-- Tab 3: 模板下载 -->
+        <div id="tab-template" class="tab-content">
+            <div class="card">
+                <div class="template-card">
+                    <h3>CSV 成员导入模板</h3>
+                    <p>适合用记事本或 Excel 编辑，格式简单轻量</p>
+                    <a href="/api/template/csv" style="text-decoration:none;">
+                        <button class="btn btn-secondary btn-sm" style="width:auto;">下载 CSV 模板</button>
+                    </a>
+                </div>
+                <div class="template-card">
+                    <h3>Excel 成员导入模板</h3>
+                    <p>.xlsx 格式，可直接用 Excel / WPS 打开编辑</p>
+                    <a href="/api/template/excel" style="text-decoration:none;">
+                        <button class="btn btn-secondary btn-sm" style="width:auto;">下载 Excel 模板</button>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ======================================
+        // Tab 切换
+        // ======================================
+        document.querySelectorAll('.tab-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+                document.querySelectorAll('.tab-content').forEach(function(c) { c.classList.remove('active'); });
+                this.classList.add('active');
+                document.getElementById('tab-' + this.dataset.tab).classList.add('active');
+            });
+        });
+
+        // ======================================
+        // 获取用户 ID
+        // ======================================
+        function getUserIdFromUrl() {
+            var urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get('userId') || 'test_user';
+        }
+        document.getElementById('userId').value = getUserIdFromUrl();
+
+        // ======================================
+        // 表单提交
+        // ======================================
+        var form = document.getElementById('groupForm');
+        var resultBox = document.getElementById('resultBox');
+        var submitBtn = document.getElementById('submitBtn');
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(form);
+            var groupName = document.getElementById('groupName').value;
+            var ownerId = document.getElementById('ownerId').value;
+            var fileName = document.getElementById('file').files[0] ? document.getElementById('file').files[0].name : '';
+
+            // 显示加载状态
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner"></span>正在创建群聊...';
+            resultBox.className = 'result-box loading show';
+            resultBox.innerHTML = '<span class="spinner"></span> 正在解析文件并调用企业微信API，请稍候...' +
+                '<div class="info-line">群名: ' + escapeHtml(groupName) + ' | 群主: ' + escapeHtml(ownerId) + ' | 文件: ' + escapeHtml(fileName) + '</div>';
+
+            fetch('/api/group/create', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function(response) {
+                return response.text();
+            })
+            .then(function(result) {
+                var isSuccess = result.indexOf('成功') !== -1;
+                resultBox.className = 'result-box show ' + (isSuccess ? 'success' : 'error');
+
+                // 将 \n 转为 <br> 以正确显示多行错误说明
+                var displayResult = escapeHtml(result).replace(/\n/g, '<br>');
+                // 将 "说明:" 高亮显示
+                displayResult = displayResult.replace(/说明:/g, '<br><span style="color:#e65100;font-weight:bold;">说明:</span>');
+
+                var html = '<strong>' + (isSuccess ? '建群成功' : '建群失败') + '</strong>';
+                html += '<div style="margin-top:6px;line-height:1.8;">' + displayResult + '</div>';
+                html += '<div class="info-line">群名: ' + escapeHtml(groupName) + ' | 群主: ' + escapeHtml(ownerId) + '</div>';
+                resultBox.innerHTML = html;
+            })
+            .catch(function(error) {
+                resultBox.className = 'result-box show error';
+                resultBox.innerHTML = '<strong>请求失败</strong><div style="margin-top:6px;">错误信息: ' + escapeHtml(error.message) + '</div>' +
+                    '<div class="info-line">请检查网络连接或后端服务是否正常</div>';
+            })
+            .then(function() {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '一键创建群聊';
+            });
+        });
+
+        function escapeHtml(text) {
+            var div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    </script>
+</body>
+</html>
