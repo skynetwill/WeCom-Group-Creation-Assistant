@@ -7,6 +7,7 @@ public class WeChatProperties {
 
     private String corpid;
     private String corpsecret;
+    private String agentid;
 
     public String getCorpid() {
         return corpid;
@@ -22,5 +23,13 @@ public class WeChatProperties {
 
     public void setCorpsecret(String corpsecret) {
         this.corpsecret = corpsecret;
+    }
+
+    public String getAgentid() {
+        return agentid;
+    }
+
+    public void setAgentid(String agentid) {
+        this.agentid = agentid;
     }
 }

@@ -1,9 +1,13 @@
 # 服务端口
 server.port=8082
 
-# 企业微信配置（请替换为你自己的 corpid 和 corpsecret）
+# 企业微信配置（请替换为你自己的 corpid、corpsecret 和 agentid）
 wechat.work.corpid=请替换为你的企业ID
 wechat.work.corpsecret=请替换为你的应用密钥
+wechat.work.agentid=请替换为你的应用AgentId
+
+# 应用访问地址（OAuth授权回调地址）
+app.base-url=请替换为你的应用访问地址（如 https://xxx.ngrok-free.dev）
 
 # 文件上传大小限制
 spring.servlet.multipart.max-file-size=10MB
