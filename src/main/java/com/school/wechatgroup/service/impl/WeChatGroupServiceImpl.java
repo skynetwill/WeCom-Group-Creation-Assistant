@@ -56,6 +56,7 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
 
         // 群聊相关
         ERROR_EXPLAIN.put(60011, "指定的群聊不存在（可能已被解散）");
+        ERROR_EXPLAIN.put(60111, "成员列表中包含不存在的 UserID，请检查文件中的 userid 是否正确");
         ERROR_EXPLAIN.put(86001, "群聊不存在或已被删除");
         ERROR_EXPLAIN.put(86101, "群主 UserID 无效，请检查填写的群主 userid 是否正确");
         ERROR_EXPLAIN.put(86102, "群聊名称不能为空");
