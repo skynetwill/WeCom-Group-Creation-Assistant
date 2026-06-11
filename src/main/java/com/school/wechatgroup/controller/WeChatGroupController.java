@@ -1,8 +1,9 @@
 package com.school.wechatgroup.controller;
 
 import com.school.wechatgroup.config.WeChatProperties;
-import com.school.wechatgroup.constant.SessionKeys;
 import com.school.wechatgroup.service.GroupRecordService;
+import com.school.wechatgroup.util.IpUtils;
+import com.school.wechatgroup.util.SecurityUtils;
 import com.school.wechatgroup.service.WeChatGroupService;
 import com.school.wechatgroup.task.WeChatTokenManager;
 import com.school.wechatgroup.vo.CreateGroupResultVO;
@@ -67,9 +68,9 @@ public class WeChatGroupController {
 
     @GetMapping("/")
     public void homePage(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        Object sessionUserId = request.getSession().getAttribute(SessionKeys.LOGIN_USER_ID);
+        String sessionUserId = SecurityUtils.getCurrentUserId(request);
         if (sessionUserId != null) {
-            response.sendRedirect("/index.html?userId=" + URLEncoder.encode((String) sessionUserId, StandardCharsets.UTF_8));
+            response.sendRedirect("/index.html?userId=" + URLEncoder.encode(sessionUserId, StandardCharsets.UTF_8));
             return;
         }
 
@@ -131,10 +132,10 @@ public class WeChatGroupController {
             @RequestParam(value = "userId", required = false, defaultValue = "本地用户") String userIdParam,
             HttpServletRequest request
     ) {
-        Object sessionUserId = request.getSession().getAttribute(SessionKeys.LOGIN_USER_ID);
-        String userId = (sessionUserId != null)
-                ? (String) sessionUserId
-                : userIdParam;
+        String userId = SecurityUtils.getCurrentUserId(request);
+        if (userId == null) {
+            userId = userIdParam;
+        }
         log.info("===== 收到建群请求 =====");
         log.info("操作人：{} | 群名：{} | 群主：{} | 文件：{}", userId, groupName, ownerId, file.getOriginalFilename());
 
@@ -149,7 +150,7 @@ public class WeChatGroupController {
         try {
             CreateGroupResultVO result = weChatGroupService.createGroupFromFile(file, groupName, ownerId);
 
-            String ip = extractClientIp(request);
+            String ip = IpUtils.getClientIp(request);
             groupRecordService.recordGroupCreation(result, groupName, ownerId, userId, ip, file);
 
             Map<String, Object> response = new HashMap<>();
@@ -289,14 +290,4 @@ public class WeChatGroupController {
         return URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
     }
 
-    private String extractClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        return ip;
-    }
 }

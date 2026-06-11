@@ -2,6 +2,7 @@ package com.school.wechatgroup.controller;
 
 import com.school.wechatgroup.constant.SessionKeys;
 import com.school.wechatgroup.service.AuthService;
+import com.school.wechatgroup.util.IpUtils;
 import com.school.wechatgroup.vo.LoginResultVO;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpSession;
@@ -52,17 +53,6 @@ public class AuthController {
         loginAttempts.merge(ip, 1, Integer::sum);
     }
 
-    private String extractClientIp(HttpServletRequest request) {
-        String ip = request.getHeader("X-Forwarded-For");
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getHeader("X-Real-IP");
-        }
-        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
-            ip = request.getRemoteAddr();
-        }
-        return ip;
-    }
-
     @GetMapping("/csrf")
     public Map<String, Object> csrf(HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
@@ -93,7 +83,7 @@ public class AuthController {
             return result;
         }
 
-        String clientIp = extractClientIp(request);
+        String clientIp = IpUtils.getClientIp(request);
         if (isRateLimited(clientIp)) {
             result.put("success", false);
             result.put("message", "登录尝试次数过多，请稍后重试");
