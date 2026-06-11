@@ -36,25 +36,40 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
     private static final Map<Integer, String> ERROR_EXPLAIN = new HashMap<>();
 
     static {
-        ERROR_EXPLAIN.put(-1, "系统繁忙");
+        // 通用错误
+        ERROR_EXPLAIN.put(-1, "系统繁忙，请稍后重试");
         ERROR_EXPLAIN.put(0, "请求成功");
-        ERROR_EXPLAIN.put(40001, "不合法的secret参数");
-        ERROR_EXPLAIN.put(40003, "无效的UserID");
-        ERROR_EXPLAIN.put(40004, "不合法的媒体文件类型");
-        ERROR_EXPLAIN.put(40007, "不合法的媒体文件id");
-        ERROR_EXPLAIN.put(40008, "不合法的消息类型");
-        ERROR_EXPLAIN.put(40014, "不合法的access_token");
-        ERROR_EXPLAIN.put(40029, "不合法的oauth_code");
-        ERROR_EXPLAIN.put(40032, "不合法的模板id长度");
-        ERROR_EXPLAIN.put(41001, "缺少access_token参数");
-        ERROR_EXPLAIN.put(41002, "缺少appid参数");
-        ERROR_EXPLAIN.put(42001, "access_token超时");
-        ERROR_EXPLAIN.put(43002, "需要GET请求");
-        ERROR_EXPLAIN.put(44001, "多媒体文件为空");
-        ERROR_EXPLAIN.put(45001, "多媒体文件大小超过限制");
-        ERROR_EXPLAIN.put(60011, "群聊不存在");
-        ERROR_EXPLAIN.put(86001, "聊天群不存在");
-        ERROR_EXPLAIN.put(86215, "群聊成员已满");
+
+        // 参数校验错误
+        ERROR_EXPLAIN.put(40001, "企业微信密钥（secret）无效，请检查配置");
+        ERROR_EXPLAIN.put(40003, "成员列表中包含无效的 UserID，请检查文件中填写的 userid 是否正确");
+        ERROR_EXPLAIN.put(40004, "文件格式不符合要求，请上传 CSV 或 Excel 格式文件");
+        ERROR_EXPLAIN.put(40014, "企业微信授权凭证（access_token）无效，请稍后重试");
+        ERROR_EXPLAIN.put(40032, "群聊名称过长或含有不支持的特殊字符");
+        ERROR_EXPLAIN.put(41001, "企业微信授权凭证缺失，请联系管理员检查系统配置");
+        ERROR_EXPLAIN.put(41002, "企业 ID（appid）未配置，请联系管理员");
+
+        // 权限与认证
+        ERROR_EXPLAIN.put(42001, "企业微信授权凭证已过期，请刷新后重试");
+        ERROR_EXPLAIN.put(48002, "该应用没有创建群聊的权限，请在企业微信管理后台开通");
+        ERROR_EXPLAIN.put(48003, "应用未获得调用接口的权限，请联系管理员");
+
+        // 群聊相关
+        ERROR_EXPLAIN.put(60011, "指定的群聊不存在（可能已被解散）");
+        ERROR_EXPLAIN.put(86001, "群聊不存在或已被删除");
+        ERROR_EXPLAIN.put(86101, "群主 UserID 无效，请检查填写的群主 userid 是否正确");
+        ERROR_EXPLAIN.put(86102, "群聊名称不能为空");
+        ERROR_EXPLAIN.put(86103, "成员列表不能为空，请检查上传的文件是否包含成员信息");
+        ERROR_EXPLAIN.put(86104, "群聊名称已被使用，请更换群聊名称");
+        ERROR_EXPLAIN.put(86105, "群聊成员数量超过限制（最多 2000 人，含群主）");
+        ERROR_EXPLAIN.put(86201, "群主不在应用的可见范围内，请检查群主 userid");
+        ERROR_EXPLAIN.put(86202, "成员列表中部分用户不在应用的可见范围内");
+        ERROR_EXPLAIN.put(86214, "创建群聊失败，群聊数量超过企业上限");
+        ERROR_EXPLAIN.put(86215, "群聊成员已满（最多 2000 人），无法继续添加");
+
+        // 限流
+        ERROR_EXPLAIN.put(45009, "调用频率过高，请稍后再试");
+        ERROR_EXPLAIN.put(45033, "调用频率超过限制，请稍后重试");
     }
 
     public WeChatGroupServiceImpl(Map<String, FileParserStrategy> parserMap,
@@ -110,14 +125,15 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
                 log.info("建群成功 | chatId={} | 成员数={}", chatId, uniqueMembers.size());
                 return CreateGroupResultVO.success(message, userListStr, chatId);
             } else {
-                String explain = ERROR_EXPLAIN.getOrDefault(errcode, "未知错误");
-                String message = "建群失败: " + explain + " (errcode=" + errcode + ", errmsg=" + errmsg + ")";
+                String explain = ERROR_EXPLAIN.getOrDefault(errcode,
+                        "建群失败（错误码 " + errcode + "），请稍后重试或联系管理员");
+                String message = explain;
                 log.error("建群失败 | errcode={} | errmsg={} | 成员数={}", errcode, errmsg, uniqueMembers.size());
                 return CreateGroupResultVO.failure(message, errcode, errmsg);
             }
         } catch (Exception e) {
             log.error("调用建群API异常", e);
-            return CreateGroupResultVO.failure("调用企业微信API失败: " + e.getMessage(), -1, "api error");
+            return CreateGroupResultVO.failure("调用企业微信接口失败，请稍后重试", -1, "api error");
         }
     }
 
