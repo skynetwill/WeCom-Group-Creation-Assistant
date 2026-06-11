@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
+import java.util.Map;
+import java.util.HashMap;
+
 /**
  * 全局异常处理器 — 统一拦截所有未捕获异常，返回前端友好的错误信息
  */
@@ -17,9 +20,12 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<String> handleBusinessException(BusinessException e) {
+    public ResponseEntity<Map<String, Object>> handleBusinessException(BusinessException e) {
         log.warn("业务异常: {}", e.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
+        body.put("message", e.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
     @ExceptionHandler(MaxUploadSizeExceededException.class)
@@ -28,8 +34,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<String> handleException(Exception e) {
+    public ResponseEntity<Map<String, Object>> handleException(Exception e) {
         log.error("系统异常", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("系统内部错误，请联系管理员");
+        Map<String, Object> body = new HashMap<>();
+        body.put("success", false);
+        body.put("message", "系统内部错误，请联系管理员");
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

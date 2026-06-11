@@ -1,5 +1,6 @@
 package com.school.wechatgroup.service.impl;
 
+import com.school.wechatgroup.exception.BusinessException;
 import com.school.wechatgroup.service.WeChatGroupService;
 import com.school.wechatgroup.service.parser.FileParserStrategy;
 import com.school.wechatgroup.task.WeChatTokenManager;
@@ -68,7 +69,7 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
     public CreateGroupResultVO createGroupFromFile(MultipartFile file, String groupName, String ownerId) {
         String originalFilename = file.getOriginalFilename();
         if (originalFilename == null || originalFilename.isEmpty()) {
-            return CreateGroupResultVO.failure("文件名称为空", -1, "invalid filename");
+            throw new BusinessException("文件名称为空");
         }
 
         String extension = getExtension(originalFilename).toLowerCase();
@@ -78,14 +79,12 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
                 .findFirst()
                 .orElse(null);
         if (parser == null) {
-            return CreateGroupResultVO.failure(
-                    "不支持的文件格式: " + extension + "，请使用 CSV 或 Excel 文件",
-                    -1, "unsupported format");
+            throw new BusinessException("不支持的文件格式: " + extension + "，请使用 CSV 或 Excel 文件");
         }
 
         List<String> userList = parser.parse(file);
         if (userList.isEmpty()) {
-            return CreateGroupResultVO.failure("文件中没有找到有效的成员ID", -1, "empty user list");
+            throw new BusinessException("文件中没有找到有效的成员ID");
         }
 
         // 自动加入群主

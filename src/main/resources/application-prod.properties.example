@@ -15,3 +15,11 @@ spring.datasource.driver-class-name=com.mysql.cj.jdbc.Driver
 spring.jpa.hibernate.ddl-auto=validate
 spring.jpa.show-sql=false
 logging.level.com.school.wechatgroup=INFO
+
+# ===================== HikariCP 连接池优化 =====================
+spring.datasource.hikari.connection-timeout=30000
+spring.datasource.hikari.maximum-pool-size=20
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.idle-timeout=600000
+spring.datasource.hikari.max-lifetime=1800000
+spring.datasource.hikari.connection-test-query=SELECT 1

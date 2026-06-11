@@ -1,6 +1,7 @@
 package com.school.wechatgroup.controller;
 
 import com.school.wechatgroup.constant.SessionKeys;
+import com.school.wechatgroup.exception.BusinessException;
 import com.school.wechatgroup.service.AuthService;
 import com.school.wechatgroup.util.IpUtils;
 import com.school.wechatgroup.vo.LoginResultVO;
@@ -108,7 +109,7 @@ public class AuthController {
 
             loginAttempts.remove(clientIp);
             attemptWindowStart.remove(clientIp);
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | BusinessException e) {
             incrementAttempts(clientIp);
             result.put("success", false);
             result.put("message", e.getMessage());

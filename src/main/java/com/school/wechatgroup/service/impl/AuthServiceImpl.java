@@ -3,6 +3,7 @@ package com.school.wechatgroup.service.impl;
 import com.school.wechatgroup.config.AuthProperties;
 import com.school.wechatgroup.constant.SessionKeys;
 import com.school.wechatgroup.entity.AppUser;
+import com.school.wechatgroup.exception.BusinessException;
 import com.school.wechatgroup.repository.AppUserRepository;
 import com.school.wechatgroup.service.AuthService;
 import com.school.wechatgroup.vo.AuthStatusVO;
@@ -59,7 +60,7 @@ public class AuthServiceImpl implements AuthService {
             if (user != null && passwordEncoder.matches(password, user.getPassword()) && !user.getEnabled()) {
                 log.warn("已禁用账号尝试登录: {}", username);
             }
-            throw new IllegalArgumentException("用户名或密码错误");
+            throw new BusinessException("用户名或密码错误");
         }
         log.info("用户登录成功: {}", user.getUsername());
         return LoginResultVO.of(user.getUsername(), user.getNickname());
