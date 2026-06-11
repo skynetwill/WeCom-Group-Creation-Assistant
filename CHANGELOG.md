@@ -1,5 +1,130 @@
 # 版本更迭记录
 
+## 技术名词解释
+
+以下是本项目中使用的所有核心技术，按用途分类介绍。
+
+---
+
+### 一、基础框架层
+
+**Spring Boot**
+Java 世界里最主流的应用框架。它的核心思想是"约定优于配置"——你不用手动拼装各种组件，Spring Boot 根据你引入的依赖自动猜测你要做什么，帮你配置好一切。比如引入 `spring-boot-starter-web`，它就自动启动内嵌的 Tomcat 服务器、配置 JSON 解析器、注册 REST 控制器。Spring Boot 本质上是把 Spring Framework 繁琐的 XML 配置变成了自动化的"开箱即用"。
+
+**Maven**
+Java 项目的构建和依赖管理工具。你在 `pom.xml` 里声明要用什么库（比如 OpenCSV 5.7.1），Maven 自动从中央仓库下载对应的 JAR 包。`mvn compile` 编译项目，`mvn package` 打包成可运行的 JAR。Maven Wrapper（`mvnw`）让你不用预先安装 Maven——第一次运行时会自动下载。
+
+**Apache Tomcat**
+一个 Servlet 容器（也叫 Web 服务器）。它负责接收浏览器发来的 HTTP 请求，转交给你的 Java 代码处理，再把结果返回给浏览器。Spring Boot 内嵌了 Tomcat，所以你不需要单独安装 Nginx/Apache 就能运行 Web 应用。`server.port=8082` 就是告诉 Tomcat 监听哪个端口。
+
+---
+
+### 二、数据持久层
+
+**MySQL**
+全球最流行的开源关系型数据库。数据以"表"的形式组织，每张表有固定的列（字段），行与行之间通过主键和外键关联。本项目用 MySQL 存储建群操作记录、群聊信息、上传的文件和用户账号。
+
+**JPA（Java Persistence API）**
+Java 官方制定的数据库操作标准规范。它定义了一套接口（`EntityManager`、`@Entity`、`@Table`），但不负责具体实现。你可以把它理解为一套"数据库操作的统一语言"。
+
+**Hibernate**
+JPA 规范最流行的实现。它的核心功能叫 ORM（对象关系映射）——把你写的 Java 类自动对应到数据库的表，把 Java 对象的字段自动对应到表的列。你操作 Java 对象，Hibernate 自动翻译成 SQL 执行。比如 `userRepository.save(user)` 会被自动翻译成 `INSERT INTO t_app_user VALUES (...)`. `ddl-auto=update` 表示 Hibernate 启动时会自动检查数据库表结构，如果 Java 类新增了字段，它会自动在表里添加对应列。
+
+**Spring Data JPA**
+Spring 对 JPA 的进一步封装。你只需写一个接口继承 `JpaRepository<Entity, Long>`，就能自动获得 `save()`、`findById()`、`findAll()`、`delete()` 等方法，不需要写一行实现代码。还能按方法名自动生成查询——比如 `findByUsername(String username)` 会自动翻译成 `SELECT * FROM t_app_user WHERE username = ?`。
+
+**HikariCP**
+目前 Java 生态最快的数据库连接池。连接池的核心思想是"复用"——数据库连接是昂贵资源，每次都新建会很慢。HikariCP 预先创建好一批连接放在池子里，谁要用了就借一个，用完了还回去，而不是销毁重建。`maximum-pool-size=20` 表示最多同时持有 20 个连接。
+
+**H2**
+一个纯 Java 实现的内存数据库。不需要安装、不需要启动服务，你的 Java 程序启动时它就自动启动，程序关闭时数据和表结构都清空。通过 `MODE=MySQL` 可以让它模拟 MySQL 的 SQL 语法，这样你在本地开发时用 H2，部署到服务器上换成 MySQL，SQL 不用改。
+
+---
+
+### 三、前端技术
+
+**Thymeleaf**
+Spring Boot 官方推荐的服务器端模板引擎。它的特殊之处在于：`.html` 文件本身是完全合法的 HTML，可以直接用浏览器打开预览。所有的动态逻辑通过 `th:text`、`th:if`、`th:each` 等额外属性嵌入，后端处理时才被执行。跟 JSP 不同，Thymeleaf 不需要 Servlet 容器就能渲染，Spring Boot 直接支持。
+
+**Bootstrap 5**
+Twitter 开源的前端 CSS/JS 框架。它提供了一套现成的 UI 组件——按钮、卡片、导航栏、表单、弹窗等。你只需给 HTML 标签加 `class="btn btn-primary"` 就能获得一个漂亮的蓝色按钮，不用自己写 CSS。它的栅格系统通过 `col-md-6` 这样的 class 自动处理响应式布局，一套代码同时适配电脑和手机。
+
+**Bootstrap Icons**
+Bootstrap 配套的免费图标库，包含 2000+ 个 SVG 图标。用 `<i class="bi bi-wechat"></i>` 就能在页面显示一个小图标。
+
+---
+
+### 四、安全技术
+
+**BCrypt**
+目前业界最推荐的密码哈希算法。它的核心特性：每次加密自动生成一个随机盐值（salt），所以同样的密码两次加密结果完全不同；计算速度故意调慢（本文使用默认 10 轮），让暴力破解变得极度缓慢。即使数据库泄露，攻击者也很难从哈希值反推出原密码。
+
+**CSRF（跨站请求伪造）**
+一种 web 攻击方式。攻击者在你登录 A 网站后，诱导你访问一个恶意页面，那个页面自动向 A 网站发请求（比如转账、修改密码），浏览器会自动带上你的登录 Cookie，A 网站以为是你在操作。CSRF Token 的原理：每次渲染表单时生成一个随机 Token，存入用户 Session，提交表单时必须带上这个 Token，服务端验证一致才放行。攻击者无法获取这个 Token（Cookie 和 Session 不跨域传递）。
+
+**HttpSession**
+Web 服务器为每个访问者维护的一个"会话盒子"。浏览器第一次访问时，服务器创建一个 Session 并给浏览器发一个 Session ID（存 Cookie 里）。之后每次请求浏览器自动带上这个 ID，服务器就能认出"这是同一个人"。本项目用 Session 存储登录状态——`LOGIN_USER_ID` 属性有值说明已登录。
+
+**HandlerInterceptor**
+Spring MVC 提供的拦截器机制。它在请求到达 Controller 之前（preHandle）、之后（postHandle）、完成之后（afterCompletion）三个时间点执行自定义逻辑。本项目用 `preHandle` 检查 Session 中是否有 `LOGIN_USER_ID`，没有就重定向到登录页。
+
+**Filter（Servlet 过滤器）**
+比 Interceptor 更底层的拦截机制，工作在 Servlet 容器层面（Tomcat）。所有 HTTP 请求和响应都会经过 Filter。本项目用 `SecurityFilter` 给每个响应添加安全头（防 XSS / 点击劫持等）。
+
+---
+
+### 五、文件处理
+
+**Apache POI**
+Java 操作 Microsoft Office 文档的开源库。`poi-ooxml` 包同时支持：
+- Excel（`.xlsx` 用 `XSSFWorkbook`，`.xls` 用 `HSSFWorkbook`）——读取单元格内容
+- Word（`XWPFDocument`）——动态生成操作指南文档
+
+为什么不用 EasyExcel？POI 同时支持 `.xlsx` 和 `.xls` 两种格式，并且附带了 Word 生成能力，一个依赖解决两个需求。
+
+**OpenCSV**
+专门处理 CSV 文件的轻量库。CSV 本质是纯文本，但手工处理会遇到编码问题（UTF-8 BOM）、逗号转义、引号包裹等边缘情况。OpenCSV 把这些处理干净了。
+
+---
+
+### 六、Spring 核心概念
+
+**IoC（控制反转）/ DI（依赖注入）**
+Spring 最核心的思想。传统编程中，类自己 `new` 出它需要的对象（控制权在自己手里）。Spring IoC 反转了这个过程——你告诉 Spring "我需要一个 `WeChatGroupService`"，Spring 负责创建好并"注入"给你。好处：类与类之间解耦，方便替换实现，方便单元测试（Mock 一个假的注入进去）。
+
+**@Component / @Service / @Repository / @Controller**
+这四个注解本质是一样的——告诉 Spring"这个类请帮我管理"（放进 IoC 容器）。不同名字只是语义区分：`@Service` 标记业务逻辑层，`@Repository` 标记数据访问层，`@Controller` 标记控制器层。
+
+**@Bean**
+用在方法上，把方法的返回值注册到 Spring IoC 容器。`@Bean public RestTemplate restTemplate()` 的意思是：Spring 启动时调用这个方法，把返回的 `RestTemplate` 对象管理起来，别的地方需要时注入。
+
+**@ConfigurationProperties**
+把 `application.properties` 中的配置自动绑定到 Java 对象的字段上。`@ConfigurationProperties(prefix = "wechat.work")` 会把 `wechat.work.corpid` 的值自动赋给 `WeChatProperties.corpid` 字段。比一个个写 `@Value` 更整洁。
+
+**@ConditionalOnProperty**
+条件装配注解。当 `application.properties` 中某个属性等于指定值时，才创建这个 Bean。`@ConditionalOnProperty(name = "app.auth.enabled", havingValue = "true")` 的意思是：只有当 `app.auth.enabled=true` 时才创建这个 Bean。`false` 时整个类都不会被加载，零内存开销。
+
+**@Transactional**
+声明式事务管理。加在方法上表示这个方法里的所有数据库操作要么全部成功，要么全部回滚。比如建群时保存操作记录和群聊记录——如果群聊记录保存失败，操作记录也会自动撤销。
+
+**@Scheduled**
+定时任务。`@Scheduled(fixedRate = 3600000)` 表示每 3600000 毫秒（1 小时）执行一次这个方法。`@EnableScheduling` 在启动类上全局开启定时任务支持。
+
+**volatile**
+Java 关键字，保证多线程场景下的变量可见性。`WeChatTokenManager` 中的 `accessToken` 字段被定时任务线程写入，被业务线程读取。`volatile` 确保写入后所有线程立即看到最新值，而不是读到缓存的旧值。
+
+---
+
+### 七、设计模式
+
+**策略模式（Strategy Pattern）**
+定义一个接口（`FileParserStrategy`），多种实现（`CsvFileParser`、`ExcelFileParser`），运行时根据条件（文件扩展名）选择使用哪个实现。新的文件格式只需增加一个新类，不修改现有代码。
+
+**工厂模式（Factory Pattern）**
+`CreateGroupResultVO.success()` 和 `CreateGroupResultVO.failure()` 是静态工厂方法。它们隐藏了对象的创建细节——调用者不需要知道构造函数有多少参数，只需要告诉它"给我一个成功/失败的结果"。
+
+---
+
 ## v2.0 — 生产就绪 (2026-06)
 
 ### 全新前端：Thymeleaf + Bootstrap 5
