@@ -75,13 +75,21 @@ public class AuthController {
     @PostMapping("/login")
     public Map<String, Object> login(@RequestParam String username,
                                      @RequestParam String password,
-                                     @RequestParam(required = false) String csrfToken,
                                      HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
 
         if (authService == null) {
             result.put("success", false);
             result.put("message", "认证功能未启用");
+            return result;
+        }
+
+        // CSRF 验证
+        String csrfToken = request.getHeader("X-CSRF-TOKEN");
+        String sessionToken = (String) request.getSession().getAttribute("CSRF_TOKEN");
+        if (sessionToken == null || csrfToken == null || !sessionToken.equals(csrfToken)) {
+            result.put("success", false);
+            result.put("message", "无效请求");
             return result;
         }
 
