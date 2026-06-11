@@ -1,831 +1,487 @@
 # 企业微信批量建群工具
 
-> Spring Boot 3.2.5 + Java 17 | 支持 CSV / Excel 上传，一键批量创建企业微信群聊
+> Spring Boot 3.2.5 + Java 17 + Maven | Thymeleaf + Bootstrap 5 | 批量创建企业微信群聊
 
 ---
 
 ## 目录
 
-- [新手入门（5 分钟上手）](#新手入门5-分钟上手)
-- [项目架构](#项目架构)
-- [技术栈与依赖](#技术栈与依赖)
-- [代码详解](#代码详解)
-  - [应用入口：WechatGroupApplication](#1-应用入口wechatgroupapplication)
-  - [配置层：WeChatProperties](#2-配置层wechatproperties)
-  - [Token 管理：WeChatTokenManager](#3-token-管理wechattokenmanager)
-  - [文件解析策略层](#4-文件解析策略层)
-  - [核心服务：WeChatGroupService](#5-核心服务wechatgroupservice)
-  - [控制器：WeChatGroupController](#6-控制器wechatgroupcontroller)
-  - [前端：index.html](#7-前端indexhtml)
+- [快速开始](#快速开始)
+- [项目简介](#项目简介)
+- [功能特性](#功能特性)
+- [技术栈](#技术栈)
+- [项目结构](#项目结构)
+- [系统架构](#系统架构)
+- [配置指南](#配置指南)
 - [API 文档](#api-文档)
-- [错误码速查表](#错误码速查表)
-- [日志系统](#日志系统)
-- [测试](#测试)
-- [部署与运维](#部署与运维)
-- [常见问题 FAQ](#常见问题-faq)
+- [错误码速查](#错误码速查)
+- [部署指南](#部署指南)
+- [开发指南](#开发指南)
+- [安全措施](#安全措施)
 
 ---
 
-## 新手入门（5 分钟上手）
+## 快速开始
 
-### 这东西是干什么的？
-
-假设你在企业微信里要创建一个群，需要手动拉人——一个人一个人地点，很慢。这个工具让你**准备好一份 Excel 或 CSV 名单，在网页上点一下按钮，群就建好了**。
-
-### 怎么用？
-
-**第一步：启动程序**
+**前提条件：** JDK 17+，无需安装 Maven（已包含 Maven Wrapper）。
 
 ```bash
-# 进入项目目录
-cd wechat-group
+# 1. 配置
+cp src/main/resources/application.properties.example src/main/resources/application.properties
+cp src/main/resources/application-dev.properties.example src/main/resources/application-dev.properties
+# 编辑 application-dev.properties，填入企业微信 corpid / corpsecret / agentid
 
-# 启动（Windows PowerShell 或 CMD 都可以）
-mvnw.cmd spring-boot:run
+# 2. 构建
+./mvnw clean package
+
+# 3. 运行
+./mvnw spring-boot:run
 ```
 
-看到 `Started WechatGroupApplication` 和 `Token 更新成功` 就说明启动好了。
-
-**第二步：打开网页**
-
-浏览器访问：**http://localhost:8082**
-
-你会看到三个标签页：
-
-| 标签 | 做什么 |
-|------|--------|
-| **建群操作** | 填群名、群主ID、上传名单文件，点按钮建群 |
-| **操作指南** | 使用说明 + 常见问题，可下载 Word 文档 |
-| **模板下载** | 下载标准的 CSV 或 Excel 模板，照着填就行 |
-
-**第三步：准备名单文件**
-
-名单文件格式很简单——第一行写 `userid`（表头），后面每行写一个成员的企业微信 userid：
-
-```
-userid
-chenyun
-zhangsan
-lisi
-```
-
-> **群主也要写进名单里！** 如果不写也没关系，程序会自动把群主补进去。
-
-**第四步：创建群聊**
-
-1. 输入群聊名称（比如"项目讨论组"）
-2. 输入群主的企业微信 userid
-3. 上传准备好的名单文件
-4. 点击"一键创建群聊"
-
-页面下方会显示结果——绿色是成功，红色是失败（会告诉你具体原因）。
-
-### 怎么关掉？
-
-在终端按 `Ctrl + C` 即可停止。
+浏览器访问 `http://localhost:8082`，使用默认账号 `admin` 登录即可。
 
 ---
 
-## 项目架构
+## 项目简介
 
-### 分层架构图
+本工具面向**企业微信管理员和教师**，通过上传成员名单文件（CSV 或 Excel），一键批量创建企业微信群聊。解决了手动逐一拉人建群的低效问题，适用于学校班级群、部门群、项目讨论组等场景。
+
+**工作流程：**
 
 ```
-┌─────────────────────────────────────────────┐
-│                浏览器 (Browser)               │
-│          index.html (三 Tab 页面)              │
-└──────────────────┬──────────────────────────┘
-                   │ HTTP POST /api/group/create
-                   │ (multipart/form-data)
-                   ▼
-┌─────────────────────────────────────────────┐
-│            Controller 层                      │
-│     WeChatGroupController                    │
-│     - 接收文件上传请求                          │
-│     - IP 提取 + 操作审计日志                    │
-│     - 模板下载 / 操作指南下载                    │
-└──────────────────┬──────────────────────────┘
+准备成员名单 (CSV/Excel)  →  上传表单  →  一键建群  →  返回结果 + 数据库记录
+```
+
+---
+
+## 功能特性
+
+- **一键批量建群** -- 上传 CSV 或 Excel 名单，自动调用企业微信 API 创建群聊
+- **多种文件格式** -- 支持 `.csv`、`.xlsx`、`.xls`，策略模式扩展新格式
+- **42 种错误码翻译** -- 企业微信原始错误码自动翻译为中文说明，覆盖通用、权限、群聊、限流等类别
+- **OAuth2 身份认证** -- 企业微信工作台自动获取用户身份，操作可追溯
+- **登录认证系统** -- 基于 Session  + BCrypt 密码加密，可通过 `app.auth.enabled` 开关启用/禁用
+- **CSRF 防护** -- 登录接口 Token 校验，防止跨站请求伪造
+- **登录限流** -- 同一 IP 每分钟最多 5 次尝试，内存缓存 + 定时清理
+- **安全响应头** -- 自动注入 `X-Content-Type-Options`、`X-Frame-Options`、`X-XSS-Protection`、`Referrer-Policy`
+- **数据库持久化** -- Spring Data JPA + MySQL（生产）/ H2（开发），三张业务表记录操作历史
+- **文件日志轮转** -- Logback 按天切割日志，保留 30 天，审计日志独立文件
+- **多环境配置** -- `dev` / `prod` profile 自动切换数据库、日志级别、认证行为
+- **模板下载** -- 动态生成 CSV / Excel 成员模板、Word 操作指南文档
+- **专业前端** -- Thymeleaf + Bootstrap 5 浅色主题，三页签 UI（建群、指南、模板）
+- **企业级分层架构** -- Controller / Service / Repository / Entity 清晰分层，VO/DTO/Util 工具类齐全
+
+---
+
+## 技术栈
+
+| 类别 | 技术 | 版本 | 用途 |
+|------|------|------|------|
+| **语言** | Java | 17 | 开发语言 |
+| **框架** | Spring Boot | 3.2.5 | 应用框架 |
+| **模板引擎** | Thymeleaf | 3.x | 服务端渲染页面 |
+| **前端** | Bootstrap 5 | 5.x | 响应式 UI 框架 |
+| **持久化** | Spring Data JPA | 3.2.5 | ORM 数据库操作 |
+| **数据库** | MySQL / H2 | 8.0+ / 2.x | 生产数据库 / 开发内置数据库 |
+| **连接池** | HikariCP | 内嵌 | 数据库连接池（生产配置） |
+| **安全** | spring-security-crypto | 6.x | BCrypt 密码加密 |
+| **CSV** | OpenCSV | 5.7.1 | CSV 文件解析 |
+| **Excel/Word** | Apache POI | 5.2.5 | Excel 解析 + Word 文档生成 |
+| **日志** | SLF4J + Logback | 内嵌 | 日志记录与文件轮转 |
+| **构建** | Maven Wrapper | 3.3.4 | 无需预装 Maven |
+| **测试** | JUnit 5 | 内嵌 | 单元测试 |
+
+---
+
+## 项目结构
+
+```
+wechat-group/
+├── pom.xml
+├── mvnw / mvnw.cmd                      ← Maven Wrapper
+├── README.md
+├── DEPLOY.md
+├── nginx.conf
+│
+├── src/main/java/com/school/wechatgroup/
+│   ├── WechatGroupApplication.java      ← 应用入口（@EnableScheduling）
+│   │
+│   ├── config/
+│   │   ├── WeChatProperties.java        ← 企微配置绑定 (wechat.work.*)
+│   │   ├── AuthProperties.java          ← 认证配置绑定 (app.auth.*)
+│   │   ├── AuthConfig.java              ← BCryptPasswordEncoder Bean（按需启用）
+│   │   └── WebMvcConfig.java            ← 拦截器注册（登录保护，按需启用）
+│   │
+│   ├── controller/
+│   │   ├── WeChatGroupController.java   ← REST API：建群、模板下载、指南下载、OAuth 入口
+│   │   ├── AuthController.java          ← 登录/登出/CSRF Token/状态查询/限流
+│   │   └── PageController.java          ← Thymeleaf 页面路由
+│   │
+│   ├── service/
+│   │   ├── WeChatGroupService.java      ← 建群业务接口
+│   │   ├── AuthService.java             ← 认证业务接口
+│   │   ├── GroupRecordService.java      ← 操作记录业务接口
+│   │   ├── impl/
+│   │   │   ├── WeChatGroupServiceImpl.java  ← 建群核心逻辑 + 42 条错误码翻译
+│   │   │   ├── AuthServiceImpl.java         ← BCrypt 密码校验 + Session 管理
+│   │   │   └── GroupRecordServiceImpl.java  ← 三表事务写入
+│   │   └── parser/
+│   │       ├── FileParserStrategy.java      ← 解析策略接口
+│   │       ├── CsvFileParser.java           ← CSV 解析（OpenCSV）
+│   │       └── ExcelFileParser.java         ← Excel 解析（.xlsx/.xls，Apache POI）
+│   │
+│   ├── repository/
+│   │   ├── GroupOperationRepository.java    ← t_group_operation
+│   │   ├── WxGroupRepository.java           ← t_wx_group
+│   │   ├── UploadFileRepository.java        ← t_upload_file
+│   │   └── AppUserRepository.java           ← t_app_user（认证用户）
+│   │
+│   ├── entity/
+│   │   ├── GroupOperation.java          ← 建群操作记录
+│   │   ├── WxGroup.java                 ← 成功创建的群聊
+│   │   ├── UploadFile.java              ← 上传文件存档（LONGBLOB）
+│   │   └── AppUser.java                 ← 认证用户（BCrypt 密码）
+│   │
+│   ├── vo/
+│   │   ├── CreateGroupResultVO.java     ← 建群结果
+│   │   ├── LoginResultVO.java           ← 登录结果
+│   │   └── AuthStatusVO.java            ← 认证状态
+│   │
+│   ├── constant/
+│   │   ├── OperationStatus.java         ← SUCCESS / FAILED 枚举
+│   │   └── SessionKeys.java             ← Session 属性键常量
+│   │
+│   ├── exception/
+│   │   ├── BusinessException.java       ← 业务异常（由全局处理器捕获）
+│   │   └── GlobalExceptionHandler.java  ← @RestControllerAdvice 全局异常处理
+│   │
+│   ├── filter/
+│   │   └── SecurityFilter.java          ← 安全响应头注入（最高优先级）
+│   │
+│   ├── interceptor/
+│   │   └── LoginInterceptor.java        ← 登录拦截（未登录重定向 /login）
+│   │
+│   ├── util/
+│   │   ├── IpUtils.java                 ← 客户端 IP 提取（X-Forwarded-For）
+│   │   └── SecurityUtils.java           ← Session 中获取当前用户
+│   │
+│   └── task/
+│       └── WeChatTokenManager.java      ← Token 获取 + 每小时自动刷新
+│
+├── src/main/resources/
+│   ├── application.properties           ← 公共配置（激活 profile、端口等）
+│   ├── application.properties.example   ← 公共配置模板
+│   ├── application-dev.properties       ← 开发环境（H2 + debug日志 + 自动建表）
+│   ├── application-dev.properties.example
+│   ├── application-prod.properties      ← 生产环境（MySQL + 连接池）
+│   ├── application-prod.properties.example
+│   ├── logback-spring.xml               ← 日志配置（按天轮转，保留 30 天）
+│   ├── templates/
+│   │   ├── index.html                   ← 主页面（Bootstrap 5 三页签）
+│   │   └── login.html                   ← 登录页面（渐变色背景）
+│   └── static/templates/
+│       └── member_template.csv          ← 静态模板备份
+│
+└── src/test/java/com/school/wechatgroup/service/parser/
+    ├── CsvFileParserTest.java           ← CSV 解析器测试（5 用例）
+    └── ExcelFileParserTest.java         ← Excel 解析器测试（6 用例）
+```
+
+---
+
+## 系统架构
+
+```
+┌──────────────────────────────────────────────────────────┐
+│                    浏览器 (Browser)                        │
+│        Thymeleaf + Bootstrap 5 (index / login)            │
+└─────────────────────┬────────────────────────────────────┘
+                      │
+          ┌───────────┼───────────┐
+          ▼           ▼           ▼
+   ┌───────────┐ ┌───────┐ ┌──────────┐
+   │ Security  │ │ Login │ │   Page   │
+   │  Filter   │ │ Inter │ │Controller│  ← 拦截器/过滤器层
+   └───────────┘ └───────┘ └──────────┘
+          │           │           │
+          ▼           ▼           ▼
+   ┌─────────────────────────────────────┐
+   │           Controller 层              │
+   │  AuthController  │  WeChatGroup     │
+   │  (登录/登出/限流)  │  Controller     │
+   │                  │  (建群/OAuth)    │
+   └────────┬─────────┴────────┬─────────┘
+            │                  │
+            ▼                  ▼
+   ┌──────────────┐  ┌─────────────────┐
+   │ AuthService  │  │ WeChatGroup     │
+   │ (BCrypt校验)  │  │ Service          │
+   │              │  │ (文件解析+建群)    │
+   └──────┬───────┘  └────┬────────────┘
+          │               │
+          │               ├──► FileParserStrategy  ← 策略模式
+          │               │    ├── CsvFileParser   (OpenCSV)
+          │               │    └── ExcelFileParser (Apache POI)
+          │               │
+          │               ├──► WeChatTokenManager  ← Token 管理
+          │               │    (volatile + @Scheduled)
+          │               │
+          │               └──► ERROR_EXPLAIN Map   ← 42 种错误翻译
+          │
+          ▼
+   ┌─────────────────────────────────────┐
+   │         Repository 层 (JPA)          │
+   │  AppUserRepo  │  GroupOperationRepo │
+   │  WxGroupRepo  │  UploadFileRepo     │
+   └───────────────┬─────────────────────┘
+                   │
+          ┌────────┴────────┐
+          ▼                 ▼
+   ┌──────────┐     ┌──────────────┐
+   │  MySQL   │     │     H2        │
+   │ (生产环境) │     │ (开发环境/内存) │
+   └──────────┘     └──────────────┘
                    │
                    ▼
-┌─────────────────────────────────────────────┐
-│             Service 层                        │
-│     WeChatGroupService                       │
-│     - 按文件扩展名选择解析器（策略模式）            │
-│     - 自动补入群主 userid                       │
-│     - 组装 JSON 请求体                        │
-│     - 错误码 → 中文翻译                        │
-└──────┬──────────────────────┬────────────────┘
-       │                      │
-       ▼                      ▼
-┌──────────────┐    ┌─────────────────────────┐
-│  Parser 策略层 │    │     Task 层              │
-│              │    │  WeChatTokenManager      │
-│ CsvFileParser│    │  - 启动时获取 Token        │
-│ ExcelFileParser   │  - 每小时自动刷新          │
-│ (.xlsx/.xls) │    │  - 线程安全（volatile）     │
-└──────┬───────┘    └──────────┬──────────────┘
-       │                       │
-       │  提取 userid 列表       │  提供 access_token
-       │                       │
-       ▼                       ▼
-┌─────────────────────────────────────────────┐
-│           企业微信 Open API                    │
-│   qyapi.weixin.qq.com                       │
-│   - GET  /cgi-bin/gettoken                   │
-│   - POST /cgi-bin/appchat/create             │
-└─────────────────────────────────────────────┘
-```
-
-### 核心设计模式：策略模式（Strategy Pattern）
-
-```
-FileParserStrategy (接口)
-    ├── parse(MultipartFile) → List<String>
-    └── supportedExtension() → String
-          │
-    ┌─────┴─────┐
-    │           │
-CsvFileParser  ExcelFileParser
-@Component     @Component
-("csvParser")  ("excelParser")
-    │               │
-    │  .csv 文件     │  .xlsx / .xls 文件
-    │  OpenCSV      │  Apache POI
-    ▼               ▼
-  List<String>  userid 列表
-```
-
-**好处**：以后要支持新的文件格式（比如 .txt、.json），只需要新增一个 `@Component` 类实现 `FileParserStrategy` 接口，不用改动任何现有代码——这就是"开闭原则"（对扩展开放，对修改关闭）。
-
-Spring 会自动把所有 `FileParserStrategy` 的实例收集到一个 `Map<String, FileParserStrategy>` 中，Service 根据文件扩展名从中选取对应的解析器。
-
-### 数据流
-
-```
-用户上传文件
-  → Controller 接收 MultipartFile
-    → Service.createGroupFromFile()
-      → 取文件扩展名 (.csv / .xlsx / .xls)
-      → 从 parserMap 中选择对应解析器
-      → parser.parse(file) 提取 List<String> userList
-      → 检查群主是否在名单中（不在则补入）
-      → createGroupFromUserList(userList, name, owner)
-        → TokenManager.getAccessToken()
-        → POST qyapi.weixin.qq.com/cgi-bin/appchat/create
-        → 解析 API 响应
-        → 按错误码追加中文说明
-      → 返回 CreateGroupResult(message, userList)
-    → Controller 将 message 返回前端，userList 写入审计日志
+   ┌─────────────────────────────────────┐
+   │       企业微信 Open API               │
+   │  qyapi.weixin.qq.com               │
+   │  GET /cgi-bin/gettoken              │
+   │  POST /cgi-bin/appchat/create       │
+   │  GET /cgi-bin/user/getuserinfo      │
+   └─────────────────────────────────────┘
 ```
 
 ---
 
-## 技术栈与依赖
+## 配置指南
 
-| 技术 | 版本 | 用途 |
-|------|------|------|
-| Java | 17 | 开发语言 |
-| Spring Boot | 3.2.5 | 应用框架 |
-| Spring MVC | 内嵌 | REST 接口 + 文件上传 |
-| OpenCSV | 5.7.1 | CSV 文件解析 |
-| Apache POI (poi-ooxml) | 5.2.5 | Excel 解析 (.xlsx/.xls) + Word 生成 (XWPF) |
-| SLF4J + Logback | 内嵌 | 日志框架 |
-| JUnit 5 | 内嵌 | 单元测试 |
-| Maven Wrapper | - | 无需安装 Maven，`./mvnw` 即可构建 |
+### 多环境切换
 
-**为什么选 Apache POI 而不是 EasyExcel？**
-- POI 同时支持 `.xlsx` 和 `.xls` 两种格式
-- 自动包含 XWPF 模块，可以生成 Word 操作指南文档
-- 行业标准库，社区成熟，文档丰富
+项目通过 Spring Profile 区分环境，主配置文件 `application.properties` 中指定：
 
----
-
-## 代码详解
-
-### 项目结构
-
-```
-src/main/java/com/school/wechatgroup/
-├── WechatGroupApplication.java      ← 应用入口，启动类
-├── config/
-│   └── WeChatProperties.java        ← 配置绑定（corpid / corpsecret）
-├── controller/
-│   └── WeChatGroupController.java   ← REST 控制器 + 模板/指南下载
-├── service/
-│   ├── CreateGroupResult.java       ← 建群结果 DTO
-│   ├── WeChatGroupService.java      ← 核心业务逻辑
-│   └── parser/
-│       ├── FileParserStrategy.java  ← 解析策略接口
-│       ├── CsvFileParser.java       ← CSV 解析实现
-│       └── ExcelFileParser.java     ← Excel 解析实现 (.xlsx + .xls)
-└── task/
-    └── WeChatTokenManager.java      ← Token 获取与定时刷新
-
-src/main/resources/
-├── application.properties           ← 配置（端口、凭证、上传限制）
-├── logback-spring.xml               ← 日志配置
-└── static/
-    └── index.html                   ← 前端页面（三 Tab）
-
-src/test/java/com/school/wechatgroup/service/parser/
-├── CsvFileParserTest.java           ← CSV 解析器单元测试
-└── ExcelFileParserTest.java         ← Excel 解析器单元测试
+```properties
+spring.profiles.active=dev    # 开发环境（H2数据库）
+# spring.profiles.active=prod   # 生产环境（MySQL数据库）
 ```
 
----
+所有环境共用的配置（端口、基础 URL、默认管理员账号、文件上传限制）在 `application.properties` 中；环境差异配置（数据库、日志级别、企微凭证）在各自的 `application-[profile].properties` 中。
 
-### 1. 应用入口：WechatGroupApplication
+### 认证开关
 
-```java
-@SpringBootApplication
-@EnableScheduling                        // ← 启用定时任务（Token 每小时刷新）
-@EnableConfigurationProperties(WeChatProperties.class)  // ← 启用配置属性绑定
-public class WechatGroupApplication {
+通过 `app.auth.enabled` 控制登录认证是否启用：
 
-    @Bean
-    public RestTemplate restTemplate() {  // ← 注册全局 HTTP 客户端
-        return new RestTemplate();
-    }
+```properties
+# 开发/生产环境默认启用
+app.auth.enabled=true
 
-    public static void main(String[] args) {
-        SpringApplication.run(WechatGroupApplication.class, args);
-    }
-}
+# 如设为 false，所有页面无需登录即可访问，拦截器不会加载
+app.auth.enabled=false
 ```
 
-**关键注解说明：**
+默认管理员账号密码：
 
-| 注解 | 作用 |
-|------|------|
-| `@SpringBootApplication` | 组合注解 = `@Configuration` + `@EnableAutoConfiguration` + `@ComponentScan` |
-| `@EnableScheduling` | 开启 Spring 定时任务支持，TokenManager 的 `@Scheduled` 需要这个 |
-| `@EnableConfigurationProperties` | 将 `WeChatProperties` 注册为 Spring Bean |
-| `@Bean` | `RestTemplate` 全局单例，所有需要调 HTTP 接口的地方都注入这一个实例 |
-
-**为什么用 RestTemplate 而不是 WebClient？**
-- 项目是同步阻塞模型，不需要异步
-- RestTemplate 配置简单，与 Spring Boot 3.x 兼容
-- 企业微信 API 调用量不大，不需要连接池优化
-
----
-
-### 2. 配置层：WeChatProperties
-
-```java
-@ConfigurationProperties(prefix = "wechat.work")
-public class WeChatProperties {
-    private String corpid;      // 企业 ID
-    private String corpsecret;  // 应用密钥
-    // getter / setter ...
-}
+```properties
+app.auth.default-username=admin
+app.auth.default-password=你的密码
 ```
 
-**工作原理：**
+密码以 **BCrypt** 加密存储在 `t_app_user` 表中。应用首次启动时若表为空，会自动创建默认用户。
 
-Spring Boot 启动时，自动将 `application.properties` 中的 `wechat.work.corpid` 和 `wechat.work.corpsecret` 读取到 `WeChatProperties` 对象的同名字段中。
+### 数据库配置
 
-**配置对应关系：**
-```
-application.properties              WeChatProperties
-─────────────────────────           ────────────────
-wechat.work.corpid=xxx      →       corpid = "xxx"
-wechat.work.corpsecret=xxx  →       corpsecret = "xxx"
-```
+**开发环境（H2 内存数据库）：**
 
-**为什么不用 `@Value`？**
-- `@ConfigurationProperties` 可以一次性绑定多个属性，代码更整洁
-- 支持类型安全校验
-- IDE 有自动补全提示（配合 `spring-boot-configuration-processor`）
-
----
-
-### 3. Token 管理：WeChatTokenManager
-
-```java
-@Component
-public class WeChatTokenManager {
-    private volatile String accessToken;  // ← volatile 保证多线程可见性
-
-    @PostConstruct                        // ← 启动时立即执行
-    public void init() {
-        refreshAccessToken();
-    }
-
-    @Scheduled(fixedRate = 3600000)       // ← 每小时执行一次
-    public void refreshAccessToken() {
-        // GET https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=&corpsecret=
-        // 解析响应 → 提取 access_token → 存入 accessToken 字段
-    }
-}
+```properties
+spring.datasource.url=jdbc:h2:mem:wechat_group;MODE=MySQL;DB_CLOSE_DELAY=-1
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.hibernate.ddl-auto=update              # 自动建表
+spring.jpa.show-sql=true                          # 打印 SQL
+spring.h2.console.enabled=true                    # H2 Web 控制台
 ```
 
-**设计要点：**
+浏览器访问 `http://localhost:8082/h2-console` 可查看内存数据库。
 
-| 特性 | 说明 |
-|------|------|
-| `volatile` | 保证多线程对 `accessToken` 的读写可见性。Token 每 1 小时被定时任务线程写入一次，被 Service 工作线程读取多次 |
-| `@PostConstruct` | 在 Bean 初始化后立即调用，确保应用启动时 Token 就已就绪 |
-| `@Scheduled(fixedRate = 3600000)` | 固定频率执行，不受上次任务耗时影响。企业微信 Token 有效期 2 小时，1 小时刷新确保不会过期 |
-| 构造器注入 | Spring 推荐的依赖注入方式，依赖清晰、不可变、便于测试 |
+**生产环境（MySQL 8.0+）：**
 
-**Token 生命周期：**
-```
-应用启动 → init() 获取 Token → 存入 volatile accessToken
-                                        ↓
-                          每 1 小时自动刷新 ← @Scheduled
-                                        ↓
-                          Service 随时调用 getAccessToken()
-```
+```properties
+spring.datasource.url=jdbc:mysql://localhost:3306/wechat_group?useUnicode=true&characterEncoding=utf-8&serverTimezone=Asia/Shanghai
+spring.datasource.username=wechat_app
+spring.datasource.password=数据库密码
+spring.jpa.hibernate.ddl-auto=validate            # 仅校验，不自动变更
+spring.jpa.show-sql=false
 
----
-
-### 4. 文件解析策略层
-
-#### 4.1 接口定义：FileParserStrategy
-
-```java
-public interface FileParserStrategy {
-    List<String> parse(MultipartFile file);   // 核心方法：文件 → userid 列表
-    String supportedExtension();              // 元数据：支持什么格式
-}
+# HikariCP 连接池优化
+spring.datasource.hikari.maximum-pool-size=20
+spring.datasource.hikari.minimum-idle=5
+spring.datasource.hikari.connection-timeout=30000
 ```
 
-#### 4.2 CSV 解析器：CsvFileParser
+### 企业微信配置
 
-```java
-@Component("csvParser")  // ← Spring Bean 名称 = "csvParser"
-public class CsvFileParser implements FileParserStrategy {
+在企业微信管理后台获取以下信息并配置：
 
-    public List<String> parse(MultipartFile file) {
-        // 1. 用 UTF-8 编码读取（解决中文文件名乱码）
-        // 2. OpenCSV 逐行读取
-        // 3. 取第一列数据
-        // 4. 跳过表头行（值为 "userid" 的行）
-        // 5. 跳过空行
-        return userList;
-    }
-}
+```properties
+wechat.work.corpid=你的企业ID
+wechat.work.corpsecret=应用Secret
+wechat.work.agentid=你的AgentId
+app.base-url=https://你的应用访问地址
 ```
 
-**关键设计细节：**
-
-- **UTF-8 编码**：`new InputStreamReader(file.getInputStream(), StandardCharsets.UTF_8)`，解决 Windows 上 Excel 导出的 CSV 文件编码问题
-- **跳过表头**：`values[0].equalsIgnoreCase("userid")` 不区分大小写
-- **异常转义**：解析异常包装为 `RuntimeException` 抛出，由 Service 层统一处理并返回友好提示
-
-#### 4.3 Excel 解析器：ExcelFileParser
-
-```java
-@Component("excelParser")
-public class ExcelFileParser implements FileParserStrategy {
-
-    public List<String> parse(MultipartFile file) {
-        // 1. 根据扩展名选择 Workbook 实现
-        //    .xlsx → XSSFWorkbook (新版 Excel)
-        //    .xls  → HSSFWorkbook  (旧版 Excel)
-        // 2. 读取第一个 Sheet
-        // 3. 逐行读取第一列
-        // 4. 跳过表头、空行、空单元格
-        // 5. 处理各种单元格类型（文本、数字、布尔、公式）
-        return userList;
-    }
-
-    private String getCellValueAsString(Cell cell) {
-        switch (cell.getCellType()) {
-            case STRING:   return cell.getStringCellValue();
-            case NUMERIC:  return 格式化数字（整数无小数点）;
-            case BOOLEAN:  return String.valueOf(...);
-            case FORMULA:  return 取公式计算结果;
-            default:       return "";
-        }
-    }
-}
-```
-
-**支持的单元格类型：**
-
-| 类型 | 示例 | 处理方式 |
-|------|------|----------|
-| 文本 | `chenyun` | 直接读取 |
-| 数字 | `1001` | 转为整数字符串（避免 `1001.0`） |
-| 布尔 | `TRUE` | 转为 `"true"` |
-| 公式 | `=A1` | 取计算结果 |
-
-**为什么用 `getSheetAt(0)` 只读第一个 Sheet？**
-- 简化用户操作：只需关注第一个 Sheet
-- 企业微信建群只需要一列 userid，多 Sheet 没有意义
-
----
-
-### 5. 核心服务：WeChatGroupService
-
-这是整个项目的**大脑**，负责调度所有组件协同工作。
-
-```java
-@Service
-public class WeChatGroupService {
-
-    // Spring 自动注入所有 FileParserStrategy 实例
-    private final Map<String, FileParserStrategy> parserMap;
-
-    public CreateGroupResult createGroupFromFile(MultipartFile file, ...) {
-        // 步骤 1: 提取文件扩展名 (.csv / .xlsx / .xls)
-        // 步骤 2: 从 parserMap 选择对应解析器
-        //         .csv  → parserMap.get("csvParser")
-        //         .xlsx → parserMap.get("excelParser")
-        //         .xls  → parserMap.get("excelParser")
-        // 步骤 3: 解析文件 → List<String> userList
-        // 步骤 4: 自动补入群主（鲁棒性设计）
-        // 步骤 5: 调用企业微信 API
-    }
-}
-```
-
-**解析器选择逻辑：**
-
-```java
-// .xlsx 和 .xls 都映射到 excelParser（一个解析器处理两种 Excel 格式）
-if ("xls".equals(extension) || "xlsx".equals(extension)) {
-    parser = parserMap.get("excelParser");
-} else {
-    parser = parserMap.get(extension + "Parser");  // "csv" → "csvParser"
-}
-```
-
-**鲁棒性设计——自动补入群主：**
-
-```java
-if (!userList.contains(ownerId)) {
-    userList.add(0, ownerId);  // 插到列表第一位
-}
-```
-
-企业微信要求群聊至少 2 人且群主必须在成员列表中。这个兜底逻辑确保即使用户忘记了，群主也会自动被加入。
-
-**企业微信 API 调用：**
-
-```java
-// 请求体
-{
-    "name": "项目讨论组",     // ← groupName
-    "owner": "chenyun",      // ← ownerId
-    "userlist": ["chenyun", "zhangsan", "lisi"]
-}
-
-// 调用
-POST https://qyapi.weixin.qq.com/cgi-bin/appchat/create?access_token={token}
-
-// 成功响应
-{ "errcode": 0, "errmsg": "ok", "chatid": "wrFKkVYAAA..." }
-
-// 失败响应
-{ "errcode": 60111, "errmsg": "userid not found" }
-```
-
-**错误码翻译机制：**
-
-```java
-private static final Map<Integer, String> ERROR_EXPLAIN = new LinkedHashMap<>();
-static {
-    ERROR_EXPLAIN.put(60111, "名单中有无效的 userid——...");
-    ERROR_EXPLAIN.put(86004, "群主 userid 不存在——...");
-    // ... 共 16 个常见错误码
-}
-
-// 使用：
-String explain = ERROR_EXPLAIN.getOrDefault(errcode, "");
-```
-
-返回给前端的内容同时包含**企微原始错误**（给技术人员排查）和**中文说明**（给普通用户理解）。
-
-**三层日志体系：**
-
-| 日志类型 | 级别 | 内容 |
-|----------|------|------|
-| 请求追踪 | INFO | `调用企微建群API \| 群名=xx \| 群主=xx \| 成员数=3 \| 成员=a,b,c` |
-| 成功记录 | INFO | `建群成功 \| chatId=xxx \| 成员=...` |
-| 失败记录 | WARN | `建群失败 \| errcode=60111 \| errmsg=... \| 成员=...` |
-| 异常记录 | ERROR | `建群API调用异常 \| ...` + 完整堆栈 |
-
----
-
-### 6. 控制器：WeChatGroupController
-
-#### POST /api/group/create — 建群（核心接口）
-
-```java
-@PostMapping("/api/group/create")
-public String createGroup(
-    @RequestParam("groupName") String groupName,   // 群聊名称
-    @RequestParam("ownerId") String ownerId,        // 群主 userid
-    @RequestParam("file") MultipartFile file,       // 名单文件
-    @RequestParam(value = "userId", required = false, defaultValue = "本地用户") String userId,  // 操作人
-    HttpServletRequest request                      // 用于提取 IP
-)
-```
-
-**处理流程：**
-
-```
-1. 记录请求日志（群名、群主、文件名）
-2. 校验文件非空
-3. 调用 Service.createGroupFromFile()
-4. 从结果中提取成员数（正则：共导入\s*(\d+)\s*人）
-5. 拼接操作审计日志
-6. 返回结果文本给前端
-```
-
-**操作审计日志格式：**
-
-```
-操作人：test_user | IP：192.168.1.100 | 群名：项目组 | 群主：chenyun | 成员数：3 | 成员：chenyun,zhangsan,lisi | 文件：名单.xlsx | 结果：建群成功！
-```
-
-每个字段的含义：
-- **操作人**：从 URL 参数 `userId` 获取，企业微信会自动拼接
-- **IP**：优先取 `X-Forwarded-For`（支持 nginx/CDN 代理）
-- **成员**：完整的 userid 列表（逗号分隔），用于事后追溯
-
-#### 其他接口
-
-| 接口 | 方法 | 说明 |
-|------|------|------|
-| `/api/template/csv` | GET | 下载 CSV 模板文件 |
-| `/api/template/excel` | GET | 动态生成并下载 Excel 模板 |
-| `/api/guide` | GET | 动态生成并下载 Word 操作指南 |
-
-模板和指南都是**运行时动态生成**的，不依赖静态二进制文件，方便随时修改内容。
-
----
-
-### 7. 前端：index.html
-
-纯静态 HTML + 内联 CSS/JS，无需任何前端框架。
-
-**设计特点：**
-
-| 特点 | 实现方式 |
-|------|----------|
-| 三 Tab 切换 | 纯 CSS class 控制显隐 |
-| 文件上传 | `fetch` + `FormData`，无需刷新页面 |
-| 加载状态 | 蓝色背景 + CSS 旋转动画 |
-| 结果反馈 | 绿色 = 成功，红色 = 失败，分行显示错误说明 |
-| 安全 | `escapeHtml()` 防 XSS 注入 |
-| 兼容性 | 使用 `var` + `function` 而非箭头函数/`const`，兼容老浏览器 |
-| `userId` 获取 | 从 URL 参数自动读取，企业微信工作台打开时会自动拼接 |
-
-**交互流程：**
-
-```
-用户点击"一键创建群聊"
-  → 按钮变灰 + 旋转动画
-  → 结果区域显示蓝色加载态（群名、群主、文件名预填）
-  → fetch POST /api/group/create
-  → 收到响应
-  → 成功：绿色区域 + 群聊ID + 成员数
-  → 失败：红色区域 + 错误码 + 中文说明
-  → 按钮恢复
-```
+OAuth2 回调需要将 `app.base-url` 的域名配置到企业微信管理后台的应用设置 -- 网页授权及 JS-SDK -- 可信域名中。
 
 ---
 
 ## API 文档
 
-### POST /api/group/create
+### 页面路由
 
-创建企业微信群聊。
+| 方法 | 路径 | 说明 | 需要登录 |
+|------|------|------|----------|
+| GET | `/` | OAuth2 认证入口，三路分支（已认证 / 有 code / 发起授权） | 否 |
+| GET | `/login` | 登录页面（Thymeleaf 渲染） | 否 |
+| GET | `/index` | 主功能页面（Thymeleaf 渲染） | 是 |
 
-**请求：**
+### 建群 API
+
+**POST `/api/group/create`**
+
 ```
 Content-Type: multipart/form-data
 
-groupName   (必填)  群聊名称
-ownerId     (必填)  群主的企业微信 userid
-file        (必填)  成员名单文件 (.csv / .xlsx / .xls)
-userId      (可选)  操作人标识，默认"本地用户"
+groupName  (必填)  String    群聊名称
+ownerId    (必填)  String    群主企业微信 UserID
+file       (必填)  File      成员名单文件 (.csv / .xlsx / .xls)
+userId     (可选)  String    操作人标识，默认"本地用户"
 ```
 
-**响应（成功）：**
+响应（JSON）：
+
+```json
+// 成功
+{ "success": true, "chatId": "wrFKkVYAAA...", "message": "建群成功！群聊ID: xxx，成员数: 3" }
+
+// 失败
+{ "success": false, "message": "错误中文说明", "errcode": 60111, "errmsg": "原始错误信息" }
 ```
-建群成功！群聊ID: wrFKkVYAAA...，共导入 3 人。
-```
 
-**响应（失败）：**
-```
-建群失败: [60111] invalid string value `xxx`. userid not found
-说明: 名单中有无效的 userid——英文错误信息里用反引号标出了具体是哪个账号不对，请修正后重试
-```
+### 认证 API
 
-### GET /api/template/csv
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/auth/csrf` | 获取 CSRF Token（登录前调用） |
+| POST | `/api/auth/login` | 登录（参数: username, password, Header: X-CSRF-TOKEN） |
+| POST | `/api/auth/logout` | 登出 |
+| GET | `/api/auth/status` | 查询当前登录状态 |
 
-下载 CSV 格式的成员导入模板。
+### 下载 API
 
-### GET /api/template/excel
-
-下载 Excel (.xlsx) 格式的成员导入模板。
-
-### GET /api/guide
-
-下载 Word (.docx) 格式的完整操作指南文档。
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| GET | `/api/template/csv` | 下载 CSV 成员导入模板 |
+| GET | `/api/template/excel` | 动态生成并下载 Excel (.xlsx) 模板 |
+| GET | `/api/guide` | 动态生成并下载 Word (.docx) 操作指南 |
 
 ---
 
-## 错误码速查表
+## 错误码速查
 
-当建群失败时，页面会显示企微原始错误码 + 下面的中文说明：
+建群失败时，系统将企业微信原始错误码自动翻译为中文说明。目前覆盖 42 种错误码，按类别分为：
 
-| 错误码 | 含义 | 解决方法 |
-|--------|------|----------|
-| `60111` | 名单中有无效的 userid | 错误信息里用反引号标出了具体是哪个账号不对 |
-| `86004` | 群主 userid 不存在 | 确认群主的企业微信账号是否正确 |
-| `86003` | 群聊名称不合法 | 群名不能为空，不能有特殊字符 |
-| `86006` | 群成员数量不对 | 至少需要 2 人（含群主） |
-| `86007` | 成员列表中有不存在的 userid | 检查名单中的账号是否都是有效账号 |
-| `86201` | 群主不在成员列表中 | 程序已自动处理，正常情况下不会再出现 |
-| `86202` | 成员列表中有重复的 userid | 去掉重复的账号 |
-| `86207` | 群主不在成员列表中 | 同上，已自动处理 |
-| `40001` | 企业微信凭证无效 | corpid 或 corpsecret 配置错误 |
-| `40014` | access_token 无效 | 稍后重试，Token 会自动刷新 |
-| `42001` | access_token 已过期 | Token 会自动刷新，稍后重试 |
-| `60011` | 应用没有建群权限 | 在企业微信后台配置建群权限 |
-| `301002` | 今日建群数达上限 | 每天最多 100 个群，请明天再试 |
-| `301003` | 群成员人数超限 | 企业微信群上限 2000 人 |
+| 类别 | 错误码范围 | 示例 |
+|------|-----------|------|
+| **通用** | -1, 0 | 系统繁忙 / 请求成功 |
+| **参数校验** | 40001-41004 | `40001`: 企业微信密钥无效 / `40014`: access_token 无效 / `41001`: 凭证缺失 |
+| **权限与认证** | 42001-50002 | `42001`: 凭证已过期 / `50001`: OAuth 回调域名未授权 |
+| **群聊操作** | 60011-86217 | `60111`: 成员包含不存在的 UserID / `86104`: 群聊名称已被使用 / `86205`: 今日建群数达上限 |
+| **限流** | 45009-45033 | `45009`: 调用频率过高 / `45016`: 今日次数达上限 |
+
+完整翻译表见 `WeChatGroupServiceImpl.ERROR_EXPLAIN`。
 
 ---
 
-## 日志系统
+## 部署指南
 
-### 两份日志
-
-| 日志 | 路径 | 内容 | 面向 |
-|------|------|------|------|
-| 控制台日志 | stdout | 请求追踪、API 调用详情、异常堆栈 | 开发者 |
-| 操作审计日志 | `logs/group_operate.log` | 每次建群操作的完整记录 | 管理员 |
-
-### 操作审计日志格式
-
-```
-2026-05-20 10:30:00 | 操作人：test_user | IP：192.168.1.100 | 群名：项目组 | 群主：chenyun | 成员数：3 | 成员：chenyun,zhangsan,lisi | 文件：名单.xlsx | 结果：建群成功！群聊ID: wrFKkVYAAA...
-```
-
-### Logback 配置要点
-
-- **编码**：统一 UTF-8
-- **滚动策略**：按天切割，保留 30 天
-- **`GROUP_OPERATE_LOG`**：独立 Logger，只写文件不输出到控制台（`additivity="false"`）
-
----
-
-## 测试
-
-### 运行测试
+### 打包
 
 ```bash
-./mvnw test
+./mvnw clean package
+# 产物：target/wechat-group-0.0.1-SNAPSHOT.jar
 ```
 
-### 测试覆盖
+### 生产环境启动
 
-| 测试类 | 用例数 | 覆盖场景 |
-|--------|--------|----------|
-| `CsvFileParserTest` | 5 | 正常 CSV、空文件、仅表头、带空行、扩展名验证 |
-| `ExcelFileParserTest` | 6 | .xlsx 正常文件、.xls 正常文件、空 Sheet、仅表头、数字单元格、扩展名验证 |
+```bash
+# profile 已在 application.properties 中指定为 prod
+java -jar target/wechat-group-0.0.1-SNAPSHOT.jar
 
-### 测试技术
+# 或指定外部配置文件
+java -jar target/wechat-group-0.0.1-SNAPSHOT.jar --spring.profiles.active=prod
+```
 
-- **MockMultipartFile**：Spring 提供的测试工具，模拟文件上传
-- **JUnit 5**：`@Test`、`assertEquals`、`assertTrue`
-- **POI 内存 Workbook**：用 `XSSFWorkbook` / `HSSFWorkbook` 在内存中生成测试用的 Excel 文件
+### Nginx 反向代理
 
----
+项目提供 `nginx.conf` 模板，将 80 端口请求代理到 `127.0.0.1:8082`：
 
-## 部署与运维
+```bash
+cp nginx.conf /etc/nginx/sites-available/wechat-group
+ln -s /etc/nginx/sites-available/wechat-group /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+```
 
 ### 环境要求
 
 | 项目 | 要求 |
 |------|------|
 | JDK | 17 或 21 |
-| Maven | 无需安装（使用 Maven Wrapper `./mvnw`） |
+| MySQL | 8.0+（生产环境） |
 | 网络 | 能访问 `qyapi.weixin.qq.com` |
+| 端口 | 默认 8082（可在 `server.port` 修改） |
 
-### 配置文件
+---
 
-`src/main/resources/application.properties`：
+## 开发指南
 
-```properties
-server.port=8082                              # 服务端口
-wechat.work.corpid=wwce6b569b8529bd53          # 企业 ID
-wechat.work.corpsecret=XOYMZI7T3VHq5...        # 应用密钥
-spring.servlet.multipart.max-file-size=10MB    # 上传文件大小限制
-```
-
-### 构建产物
+### 本地运行（使用 H2 数据库，无需 MySQL）
 
 ```bash
-# 打包为 JAR
-./mvnw clean package
-
-# 产物位置
-target/wechat-group-0.0.1-SNAPSHOT.jar
-
-# 运行 JAR
-java -jar target/wechat-group-0.0.1-SNAPSHOT.jar
-```
-
-### 日常运维
-
-```bash
-# 启动
+# 1. 确保 spring.profiles.active=dev
+# 2. 配置企业微信凭证（application-dev.properties）
+# 3. 启动
 ./mvnw spring-boot:run
-
-# 停止
-Ctrl + C
-
-# 查看操作日志
-tail -f logs/group_operate.log
 ```
 
-### 注意事项
+- 数据库：H2 内存模式，无需安装 MySQL
+- H2 控制台：`http://localhost:8082/h2-console`（JDBC URL: `jdbc:h2:mem:wechat_group`）
+- 日志级别：`DEBUG`，SQL 日志可见
 
-1. **Token 刷新依赖 `@EnableScheduling`**：如果启动类删了 `@EnableScheduling`，Token 只在启动时获取一次，1 小时后就会过期，建群会失败
-2. **端口占用**：如果 8082 端口被占用，修改 `server.port` 配置或杀掉占用进程
-3. **凭证安全**：`application.properties` 中的 `corpid` 和 `corpsecret` 不要提交到公共 Git 仓库
+### 测试
+
+```bash
+./mvnw test
+```
+
+测试覆盖范围：
+
+| 测试类 | 用例数 | 覆盖场景 |
+|--------|--------|----------|
+| `CsvFileParserTest` | 5 | 正常解析、空文件、仅表头、含空行、扩展名验证 |
+| `ExcelFileParserTest` | 6 | .xlsx 解析、.xls 解析、空 Sheet、仅表头、数字单元格、扩展名验证 |
 
 ---
 
-## 常见问题 FAQ
+## 安全措施
 
-### Q: 启动时报 `Token 更新成功` 后又报错，为什么？
-
-A: 第一次 `Token 更新成功` 是在 Bean 初始化阶段（`@PostConstruct`），第二次是应用完全启动后的定时刷新。如果第二次失败，说明网络波动，定时任务会在下一轮自动重试。
-
-### Q: 上传 Excel 文件后提示"不支持的文件格式"？
-
-A: 检查文件扩展名是否正确。支持的文件类型：`.csv`、`.xlsx`、`.xls`。如果是 WPS 保存的文件，确认扩展名是以上三种之一。
-
-### Q: 建群成功但返回的"成员数"不对？
-
-A: 不会。`getUserCount()` 方法用正则 `共导入\s*(\d+)\s*人` 精确匹配，只提取"共导入 X 人"中的数字。
-
-### Q: 可以同时创建多个群吗？
-
-A: 当前版本每次请求创建一个群。如果需要批量创建多个群，可以多次提交（每次用不同的群名和名单文件）。企业微信限制每个应用每天最多创建 100 个群。
-
-### Q: 群聊建好后可以在企业微信里看到吗？
-
-A: 是的。建群成功后，在企业微信客户端里就能看到这个群聊。群聊 ID 格式为 `wrFKkVYAAA...`。
-
-### Q: 群主可以不在名单里吗？
-
-A: 可以。程序会自动把群主补入成员列表。但群主的 userid 必须是有效的企业微信账号。
-
----
-
-## OAuth2 身份认证
-
-### 功能说明
-
-接入企业微信 OAuth2 授权，用户从工作台打开应用时自动获取真实 `UserId`，操作日志中可准确追溯到人。
-
-### 认证流程
-
-```
-浏览器打开应用 →
-  检测无 userId、无 code → 跳转企业微信 OAuth 授权页
-  检测有 code → 调用 getuserinfo 换取 UserId → 跳转主页
-  检测有 userId → 直接跳转主页
-  OAuth 失败 → 降级为"本地用户"
-```
-
-### 配置项
-
-`application.properties` 中需要配置：
-
-```properties
-# 企业微信 AgentId（在企业微信管理后台 → 应用管理 → 应用详情页查看）
-wechat.work.agentid=1000004
-
-# OAuth 回调地址（必须与企业微信后台的可信域名一致）
-app.base-url=https://qywechat.wh.bjtu.edu.cn:8088
-```
-
-### 可信域名要求
-
-在企业微信管理后台 → 应用设置 → 网页授权及JS-SDK 中配置可信域名。OAuth 的 `redirect_uri` 必须落在此域名下，否则企微会拒绝回调。
-
-### 降级策略
-
-如果 OAuth 认证失败（可信域名不可达、Token 获取失败等），程序不会报错中断，而是自动降级为 `userId=本地用户`，所有建群功能仍然正常使用，仅是操作日志中无法记录真实操作人身份。
-
-### 相关接口
-
-| 步骤 | 接口 |
-|------|------|
-| 发起授权 | `https://open.weixin.qq.com/connect/oauth2/authorize` |
-| 换取身份 | `GET /cgi-bin/user/getuserinfo?access_token=&code=` |
-
-### 代码位置
-
-- OAuth 入口：`WeChatGroupController.java` 第 58-91 行（`@GetMapping("/")`）
-- code 换 userId：`WeChatGroupController.java` 第 93-110 行（`exchangeCodeForUserId`）
+| 措施 | 实现方式 |
+|------|---------|
+| **BCrypt 密码加密** | `spring-security-crypto` 对管理员密码进行 BCrypt 哈希存储 |
+| **Session 管理** | 登录后创建新 Session（防 Session Fixation），登出时销毁 |
+| **CSRF 防护** | 登录接口需携带一次性 CSRF Token，Token 由 `/api/auth/csrf` 下发 |
+| **登录限流** | 同一 IP 每分钟最多 5 次登录尝试，内存限流 + 每 5 分钟定时清理 |
+| **安全响应头** | `SecurityFilter` 自动注入 `X-Content-Type-Options: nosniff`、`X-Frame-Options: DENY`、`X-XSS-Protection: 1; mode=block`、`Referrer-Policy: strict-origin-when-cross-origin` |
+| **登录保护** | `LoginInterceptor` 拦截受保护路径，未登录重定向 `/login` |
+| **认证可开关** | `app.auth.enabled=false` 时拦截器不加载，适用于无需认证的场景 |
+| **凭证不入库** | `application.properties` 已加入 `.gitignore`，密钥不提交到 Git |
+| **业务异常统一处理** | `GlobalExceptionHandler` 捕获 `BusinessException` 和其他未处理异常 |
+| **文件日志隔离** | 审计日志写入独立文件（`logs/group_operate.log`），按天轮转保留 30 天 |
