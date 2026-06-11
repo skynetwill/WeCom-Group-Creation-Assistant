@@ -16,7 +16,7 @@ public class LoginInterceptor implements HandlerInterceptor {
         if (userId != null) {
             return true;
         }
-        response.sendRedirect("/login.html");
+        response.sendRedirect("/login");
         return false;
     }
 }

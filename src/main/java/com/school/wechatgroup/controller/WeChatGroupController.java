@@ -71,13 +71,13 @@ public class WeChatGroupController {
     public void homePage(HttpServletRequest request, HttpServletResponse response) throws IOException {
         String sessionUserId = SecurityUtils.getCurrentUserId(request);
         if (sessionUserId != null) {
-            response.sendRedirect("/index.html?userId=" + URLEncoder.encode(sessionUserId, StandardCharsets.UTF_8));
+            response.sendRedirect("/index?userId=" + URLEncoder.encode(sessionUserId, StandardCharsets.UTF_8));
             return;
         }
 
         String userId = request.getParameter("userId");
         if (userId != null && !userId.isEmpty()) {
-            response.sendRedirect("/index.html?userId=" + URLEncoder.encode(userId, StandardCharsets.UTF_8));
+            response.sendRedirect("/index?userId=" + URLEncoder.encode(userId, StandardCharsets.UTF_8));
             return;
         }
 
@@ -86,11 +86,11 @@ public class WeChatGroupController {
             String fetchedUserId = exchangeCodeForUserId(code);
             if (fetchedUserId != null) {
                 log.info("OAuth 认证成功 | userId={}", fetchedUserId);
-                response.sendRedirect("/index.html?userId=" + URLEncoder.encode(fetchedUserId, StandardCharsets.UTF_8));
+                response.sendRedirect("/index?userId=" + URLEncoder.encode(fetchedUserId, StandardCharsets.UTF_8));
                 return;
             }
             log.warn("OAuth code 换取 userId 失败，降级为本地用户");
-            response.sendRedirect("/index.html?userId=本地用户");
+            response.sendRedirect("/index?userId=本地用户");
             return;
         }
 

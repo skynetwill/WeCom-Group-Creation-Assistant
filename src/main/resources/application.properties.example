@@ -18,3 +18,9 @@ spring.jpa.properties.hibernate.format_sql=true
 # 文件上传限制
 spring.servlet.multipart.max-file-size=10MB
 spring.servlet.multipart.max-request-size=10MB
+
+# Thymeleaf 配置
+spring.thymeleaf.cache=false
+spring.thymeleaf.prefix=classpath:/templates/
+spring.thymeleaf.suffix=.html
+spring.thymeleaf.encoding=UTF-8
