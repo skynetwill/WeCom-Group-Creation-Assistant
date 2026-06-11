@@ -53,7 +53,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public LoginResultVO login(String username, String password, HttpSession session) {
+    public LoginResultVO login(String username, String password) {
         AppUser user = userRepository.findByUsername(username).orElse(null);
         if (user == null || !passwordEncoder.matches(password, user.getPassword()) || !user.getEnabled()) {
             if (user != null && passwordEncoder.matches(password, user.getPassword()) && !user.getEnabled()) {
@@ -61,8 +61,6 @@ public class AuthServiceImpl implements AuthService {
             }
             throw new IllegalArgumentException("用户名或密码错误");
         }
-        session.setAttribute(SessionKeys.LOGIN_USER_ID, user.getUsername());
-        session.setAttribute(SessionKeys.LOGIN_NICKNAME, user.getNickname());
         log.info("用户登录成功: {}", user.getUsername());
         return LoginResultVO.of(user.getUsername(), user.getNickname());
     }

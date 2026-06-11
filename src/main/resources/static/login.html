@@ -142,11 +142,16 @@
             formData.append('username', username);
             formData.append('password', password);
 
-            fetch('/api/auth/login', {
-                method: 'POST',
-                body: formData
-            })
-            .then(function(response) { return response.json(); })
+            fetch('/api/auth/csrf')
+                .then(function(r) { return r.json(); })
+                .then(function(csrf) {
+                    return fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrf.token },
+                        body: formData
+                    });
+                })
+                .then(function(response) { return response.json(); })
             .then(function(data) {
                 if (data.success) {
                     window.location.href = '/index.html';

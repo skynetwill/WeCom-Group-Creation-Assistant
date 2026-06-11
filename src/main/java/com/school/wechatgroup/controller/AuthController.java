@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
@@ -24,13 +25,16 @@ public class AuthController {
 
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
-    @Autowired(required = false)
-    private AuthService authService;
+    private final AuthService authService;
 
     private final ConcurrentHashMap<String, Integer> loginAttempts = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Long> attemptWindowStart = new ConcurrentHashMap<>();
     private static final int MAX_ATTEMPTS = 5;
     private static final long WINDOW_MS = 60_000;
+
+    public AuthController(@Autowired(required = false) AuthService authService) {
+        this.authService = authService;
+    }
 
     private boolean isRateLimited(String ip) {
         long now = System.currentTimeMillis();
@@ -59,9 +63,19 @@ public class AuthController {
         return ip;
     }
 
+    @GetMapping("/csrf")
+    public Map<String, Object> csrf(HttpServletRequest request) {
+        Map<String, Object> result = new HashMap<>();
+        String token = UUID.randomUUID().toString();
+        request.getSession().setAttribute("CSRF_TOKEN", token);
+        result.put("token", token);
+        return result;
+    }
+
     @PostMapping("/login")
     public Map<String, Object> login(@RequestParam String username,
                                      @RequestParam String password,
+                                     @RequestParam(required = false) String csrfToken,
                                      HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
 
@@ -79,8 +93,9 @@ public class AuthController {
         }
 
         try {
-            LoginResultVO loginResult = authService.login(username, password, request.getSession());
+            LoginResultVO loginResult = authService.login(username, password);
 
+            // Session fixation protection: invalidate old session, create new one
             HttpSession oldSession = request.getSession(false);
             if (oldSession != null) {
                 oldSession.invalidate();

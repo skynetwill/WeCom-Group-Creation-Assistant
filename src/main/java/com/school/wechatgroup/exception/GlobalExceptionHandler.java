@@ -30,6 +30,6 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleException(Exception e) {
         log.error("系统异常", e);
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("系统错误: " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("系统内部错误，请联系管理员");
     }
 }

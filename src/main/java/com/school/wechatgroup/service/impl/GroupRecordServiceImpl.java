@@ -39,7 +39,7 @@ public class GroupRecordServiceImpl implements GroupRecordService {
     @Transactional
     public void recordGroupCreation(CreateGroupResultVO result, String groupName, String ownerId,
                                      String userId, String ip, MultipartFile file) {
-        String operationId = UUID.randomUUID().toString().substring(0, 8);
+        String operationId = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
 
         // 1. 操作记录（必写）
         GroupOperation operation = new GroupOperation();

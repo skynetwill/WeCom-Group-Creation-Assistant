@@ -377,15 +377,13 @@ wangwu</pre>
                 body: formData
             })
             .then(function(response) {
-                return response.text();
+                return response.json();
             })
             .then(function(result) {
-                var isSuccess = result.indexOf('成功') !== -1;
+                var isSuccess = result.success;
                 resultBox.className = 'result-box show ' + (isSuccess ? 'success' : 'error');
 
-                // 将 \n 转为 <br> 以正确显示多行错误说明
-                var displayResult = escapeHtml(result).replace(/\n/g, '<br>');
-                // 将 "说明:" 高亮显示
+                var displayResult = escapeHtml(result.message).replace(/\n/g, '<br>');
                 displayResult = displayResult.replace(/说明:/g, '<br><span style="color:#e65100;font-weight:bold;">说明:</span>');
 
                 var html = '<strong>' + (isSuccess ? '建群成功' : '建群失败') + '</strong>';

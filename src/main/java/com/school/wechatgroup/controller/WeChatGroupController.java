@@ -17,7 +17,6 @@ import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -34,6 +33,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -42,19 +42,26 @@ public class WeChatGroupController {
 
     private static final Logger log = LoggerFactory.getLogger(WeChatGroupController.class);
 
-    @Autowired
-    private WeChatGroupService weChatGroupService;
-    @Autowired
-    private GroupRecordService groupRecordService;
-    @Autowired
-    private WeChatTokenManager tokenManager;
-    @Autowired
-    private WeChatProperties weChatProperties;
-    @Autowired
-    private RestTemplate restTemplate;
+    private final WeChatGroupService weChatGroupService;
+    private final GroupRecordService groupRecordService;
+    private final WeChatTokenManager tokenManager;
+    private final WeChatProperties weChatProperties;
+    private final RestTemplate restTemplate;
 
     @Value("${app.base-url}")
     private String baseUrl;
+
+    public WeChatGroupController(WeChatGroupService weChatGroupService,
+                                  GroupRecordService groupRecordService,
+                                  WeChatTokenManager tokenManager,
+                                  WeChatProperties weChatProperties,
+                                  RestTemplate restTemplate) {
+        this.weChatGroupService = weChatGroupService;
+        this.groupRecordService = groupRecordService;
+        this.tokenManager = tokenManager;
+        this.weChatProperties = weChatProperties;
+        this.restTemplate = restTemplate;
+    }
 
     // ===================== OAuth2 身份认证 =====================
 
@@ -117,7 +124,7 @@ public class WeChatGroupController {
     // ===================== 建群操作 =====================
 
     @PostMapping("/api/group/create")
-    public String createGroup(
+    public Map<String, Object> createGroup(
             @RequestParam("groupName") String groupName,
             @RequestParam("ownerId") String ownerId,
             @RequestParam("file") MultipartFile file,
@@ -132,9 +139,11 @@ public class WeChatGroupController {
         log.info("操作人：{} | 群名：{} | 群主：{} | 文件：{}", userId, groupName, ownerId, file.getOriginalFilename());
 
         if (file.isEmpty()) {
-            String msg = "上传失败：请选择文件";
-            log.warn(msg);
-            return msg;
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "上传失败：请选择文件");
+            log.warn("上传失败：请选择文件");
+            return error;
         }
 
         try {
@@ -143,11 +152,24 @@ public class WeChatGroupController {
             String ip = extractClientIp(request);
             groupRecordService.recordGroupCreation(result, groupName, ownerId, userId, ip, file);
 
-            return result.getMessage();
+            Map<String, Object> response = new HashMap<>();
+            if ("success".equals(result.getStatus())) {
+                response.put("success", true);
+                response.put("chatId", result.getChatId());
+                response.put("message", result.getMessage());
+            } else {
+                response.put("success", false);
+                response.put("message", result.getMessage());
+                response.put("errcode", result.getErrcode());
+                response.put("errmsg", result.getErrmsg());
+            }
+            return response;
         } catch (Exception e) {
-            String errorMsg = "建群失败：" + e.getMessage();
             log.error("建群异常", e);
-            return errorMsg;
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "建群失败：" + e.getMessage());
+            return error;
         }
     }
 

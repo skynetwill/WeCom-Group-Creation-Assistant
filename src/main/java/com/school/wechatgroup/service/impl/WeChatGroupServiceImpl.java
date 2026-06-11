@@ -2,11 +2,14 @@ package com.school.wechatgroup.service.impl;
 
 import com.school.wechatgroup.service.WeChatGroupService;
 import com.school.wechatgroup.service.parser.FileParserStrategy;
+import com.school.wechatgroup.task.WeChatTokenManager;
 import com.school.wechatgroup.vo.CreateGroupResultVO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -27,6 +30,7 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
 
     private final Map<String, FileParserStrategy> parserMap;
     private final RestTemplate restTemplate;
+    private final WeChatTokenManager tokenManager;
 
     private static final Map<Integer, String> ERROR_EXPLAIN = new HashMap<>();
 
@@ -52,9 +56,12 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
         ERROR_EXPLAIN.put(86215, "群聊成员已满");
     }
 
-    public WeChatGroupServiceImpl(Map<String, FileParserStrategy> parserMap, RestTemplate restTemplate) {
+    public WeChatGroupServiceImpl(Map<String, FileParserStrategy> parserMap,
+                                   RestTemplate restTemplate,
+                                   WeChatTokenManager tokenManager) {
         this.parserMap = parserMap;
         this.restTemplate = restTemplate;
+        this.tokenManager = tokenManager;
     }
 
     @Override
@@ -65,7 +72,11 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
         }
 
         String extension = getExtension(originalFilename).toLowerCase();
-        FileParserStrategy parser = parserMap.get(extension + "Parser");
+        FileParserStrategy parser = parserMap.values().stream()
+                .filter(p -> p.supportedExtension().equalsIgnoreCase(extension)
+                           || (extension.equals("xls") && p.supportedExtension().equals("xlsx")))
+                .findFirst()
+                .orElse(null);
         if (parser == null) {
             return CreateGroupResultVO.failure(
                     "不支持的文件格式: " + extension + "，请使用 CSV 或 Excel 文件",
@@ -112,8 +123,12 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
     }
 
     private Map<String, Object> callCreateGroupApi(String groupName, String ownerId, List<String> members) {
-        String url = "https://qyapi.weixin.qq.com/cgi-bin/appchat/create?access_token="
-                + getAccessToken();
+        String token = tokenManager.getAccessToken();
+        if (token == null || token.isEmpty()) {
+            log.error("无法获取 access_token");
+            return new HashMap<>();
+        }
+        String url = "https://qyapi.weixin.qq.com/cgi-bin/appchat/create?access_token=" + token;
 
         Map<String, Object> requestBody = new HashMap<>();
         requestBody.put("name", groupName);
@@ -124,26 +139,10 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
         headers.setContentType(MediaType.APPLICATION_JSON);
         HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
 
-        @SuppressWarnings("unchecked")
-        Map<String, Object> response = restTemplate.postForObject(url, entity, Map.class);
+        ParameterizedTypeReference<Map<String, Object>> typeRef =
+                new ParameterizedTypeReference<Map<String, Object>>() {};
+        Map<String, Object> response = restTemplate.exchange(url, HttpMethod.POST, entity, typeRef).getBody();
         return response != null ? response : Map.of("errcode", -1, "errmsg", "no response");
-    }
-
-    private String getAccessToken() {
-        String url = "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid="
-                + System.getProperty("wechat.corpid", "wwce6b569b8529bd53")
-                + "&corpsecret="
-                + System.getProperty("wechat.corpsecret", "");
-        try {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-            if (response != null && ((Number) response.get("errcode")).intValue() == 0) {
-                return (String) response.get("access_token");
-            }
-        } catch (Exception e) {
-            log.error("获取access_token失败", e);
-        }
-        return "";
     }
 
     private String getExtension(String filename) {

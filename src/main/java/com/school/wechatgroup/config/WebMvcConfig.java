@@ -10,9 +10,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @ConditionalOnProperty(name = "app.auth.enabled", havingValue = "true")
 public class WebMvcConfig implements WebMvcConfigurer {
 
+    private final LoginInterceptor loginInterceptor;
+
+    public WebMvcConfig(LoginInterceptor loginInterceptor) {
+        this.loginInterceptor = loginInterceptor;
+    }
+
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(new LoginInterceptor())
+        registry.addInterceptor(loginInterceptor)
                 .addPathPatterns("/", "/index.html", "/api/group/**", "/api/template/**", "/api/guide/**")
                 .excludePathPatterns("/api/auth/**", "/login.html");
     }
