@@ -224,30 +224,140 @@
             inset: 0;
             opacity: 0;
             cursor: pointer;
+            z-index: 10;
         }
         .file-drop-zone {
-            border: 2px dashed var(--border);
-            border-radius: 14px;
-            padding: 40px 20px;
+            border: 3px dashed rgba(99,102,241,0.35);
+            border-radius: 20px;
+            padding: 60px 30px;
             text-align: center;
-            transition: all 0.3s;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             cursor: pointer;
-            background: rgba(255,255,255,0.02);
+            background: rgba(99,102,241,0.03);
+            position: relative;
+            overflow: hidden;
+        }
+        .file-drop-zone::before {
+            content: '';
+            position: absolute;
+            inset: -1px;
+            border-radius: 20px;
+            padding: 3px;
+            background: linear-gradient(45deg, transparent, rgba(99,102,241,0.3), transparent, rgba(168,85,247,0.3), transparent);
+            background-size: 400% 400%;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            animation: borderGlow 4s linear infinite;
+            opacity: 0;
+            transition: opacity 0.4s;
+        }
+        @keyframes borderGlow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
         }
         .file-drop-zone:hover, .file-drop-zone.drag-over {
             border-color: var(--primary);
-            background: rgba(99,102,241,0.05);
+            background: rgba(99,102,241,0.08);
+            transform: scale(1.01);
+            box-shadow: 0 0 60px rgba(99,102,241,0.12), inset 0 0 30px rgba(99,102,241,0.04);
         }
-        .file-drop-zone i {
-            font-size: 36px;
-            color: rgba(255,255,255,0.2);
-            margin-bottom: 12px;
-            display: block;
+        .file-drop-zone:hover::before, .file-drop-zone.drag-over::before {
+            opacity: 1;
         }
-        .file-drop-zone .file-name {
+        .file-drop-zone.drag-over {
+            border-color: var(--secondary);
+            background: rgba(168,85,247,0.12);
+            box-shadow: 0 0 80px rgba(168,85,247,0.2), inset 0 0 40px rgba(168,85,247,0.06);
+            animation: pulseBox 1.5s ease-in-out infinite;
+        }
+        @keyframes pulseBox {
+            0%, 100% { box-shadow: 0 0 60px rgba(168,85,247,0.15), inset 0 0 30px rgba(168,85,247,0.03); }
+            50% { box-shadow: 0 0 100px rgba(168,85,247,0.35), inset 0 0 50px rgba(168,85,247,0.08); }
+        }
+        .upload-icon-wrap {
+            width: 80px; height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(168,85,247,0.15));
+            border: 2px solid rgba(99,102,241,0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.4s;
+        }
+        .file-drop-zone:hover .upload-icon-wrap,
+        .file-drop-zone.drag-over .upload-icon-wrap {
+            background: linear-gradient(135deg, rgba(99,102,241,0.25), rgba(168,85,247,0.25));
+            border-color: var(--primary);
+            box-shadow: 0 0 30px rgba(99,102,241,0.3);
+            transform: translateY(-4px);
+        }
+        .upload-icon-wrap i {
+            font-size: 34px;
+            color: rgba(99,102,241,0.6);
+            transition: all 0.4s;
+        }
+        .file-drop-zone:hover .upload-icon-wrap i,
+        .file-drop-zone.drag-over .upload-icon-wrap i {
             color: var(--primary);
+            animation: iconBounce 0.6s ease;
+        }
+        @keyframes iconBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+        .file-drop-zone .drop-title {
+            font-size: 16px;
             font-weight: 600;
-            margin-top: 8px;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 6px;
+            transition: color 0.3s;
+        }
+        .file-drop-zone:hover .drop-title,
+        .file-drop-zone.drag-over .drop-title {
+            color: var(--text);
+        }
+        .file-drop-zone .drop-hint {
+            font-size: 13px;
+            color: var(--text-muted);
+        }
+        .file-name-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 16px;
+            padding: 10px 20px;
+            background: rgba(34,197,94,0.1);
+            border: 1px solid rgba(34,197,94,0.25);
+            border-radius: 50px;
+            color: #86efac;
+            font-size: 14px;
+            font-weight: 500;
+            animation: tagPop 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes tagPop {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .file-name-tag i { font-size: 18px; }
+        .file-name-tag .remove-file {
+            width: 22px; height: 22px;
+            border-radius: 50%;
+            background: rgba(239,68,68,0.2);
+            border: 1px solid rgba(239,68,68,0.3);
+            color: #fca5a5;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        .file-name-tag .remove-file:hover {
+            background: rgba(239,68,68,0.4);
+            color: #fecaca;
         }
 
         /* Button */
@@ -436,10 +546,12 @@
                                 <div class="file-input-wrapper">
                                     <input type="file" id="fileInput" accept=".csv,.xlsx,.xls">
                                     <div class="file-drop-zone" id="dropZone">
-                                        <i class="bi bi-cloud-upload"></i>
-                                        <span style="color:var(--text-muted)">拖拽文件到此处，或点击选择</span>
-                                        <div class="file-name mt-1" id="fileName" style="color:var(--primary);font-weight:600"></div>
-                                        <small style="color:var(--text-muted)">支持 CSV / Excel (.xlsx, .xls)</small>
+                                        <div class="upload-icon-wrap">
+                                            <i class="bi bi-cloud-arrow-up"></i>
+                                        </div>
+                                        <div class="drop-title">拖拽文件到此处</div>
+                                        <div class="drop-hint">或点击选择 CSV / Excel 文件</div>
+                                        <div id="fileNameArea"></div>
                                     </div>
                                 </div>
                             </div>
@@ -603,18 +715,36 @@ wangwu</pre>
         // File drag & drop
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
-        const fileName = document.getElementById('fileName');
+        const fileNameArea = document.getElementById('fileNameArea');
+
+        function showFileName(name) {
+            fileNameArea.innerHTML = '<div class="file-name-tag">' +
+                '<i class="bi bi-file-earmark-check"></i>' +
+                '<span>' + name.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</span>' +
+                '<span class="remove-file" onclick="clearFile(event)">' +
+                '<i class="bi bi-x-lg"></i></span>' +
+                '</div>';
+        }
+
+        window.clearFile = function(e) {
+            e.stopPropagation();
+            fileInput.value = '';
+            fileNameArea.innerHTML = '';
+        };
 
         fileInput.addEventListener('change', function() {
-            fileName.textContent = this.files[0] ? this.files[0].name : '';
+            if (this.files[0]) showFileName(this.files[0].name);
+            else fileNameArea.innerHTML = '';
         });
 
         dropZone.addEventListener('dragover', function(e) {
             e.preventDefault();
             dropZone.classList.add('drag-over');
         });
-        dropZone.addEventListener('dragleave', function() {
-            dropZone.classList.remove('drag-over');
+        dropZone.addEventListener('dragleave', function(e) {
+            if (!dropZone.contains(e.relatedTarget)) {
+                dropZone.classList.remove('drag-over');
+            }
         });
         dropZone.addEventListener('drop', function(e) {
             e.preventDefault();
@@ -622,7 +752,7 @@ wangwu</pre>
             const files = e.dataTransfer.files;
             if (files.length) {
                 fileInput.files = files;
-                fileName.textContent = files[0].name;
+                showFileName(files[0].name);
             }
         });
 
