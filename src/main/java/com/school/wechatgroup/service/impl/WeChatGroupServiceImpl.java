@@ -43,34 +43,50 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
         // 参数校验错误
         ERROR_EXPLAIN.put(40001, "企业微信密钥（secret）无效，请检查配置");
         ERROR_EXPLAIN.put(40003, "成员列表中包含无效的 UserID，请检查文件中填写的 userid 是否正确");
-        ERROR_EXPLAIN.put(40004, "文件格式不符合要求，请上传 CSV 或 Excel 格式文件");
+        ERROR_EXPLAIN.put(40004, "上传的文件格式或类型不符合要求，请上传 CSV 或 Excel 格式文件");
+        ERROR_EXPLAIN.put(40013, "企业微信企业 ID（corpid）无效，请检查配置");
         ERROR_EXPLAIN.put(40014, "企业微信授权凭证（access_token）无效，请稍后重试");
+        ERROR_EXPLAIN.put(40029, "企业微信授权码（code）无效或已过期，请重新授权");
         ERROR_EXPLAIN.put(40032, "群聊名称过长或含有不支持的特殊字符");
         ERROR_EXPLAIN.put(41001, "企业微信授权凭证缺失，请联系管理员检查系统配置");
-        ERROR_EXPLAIN.put(41002, "企业 ID（appid）未配置，请联系管理员");
+        ERROR_EXPLAIN.put(41002, "企业 ID（corpid）未配置，请联系管理员检查系统配置");
+        ERROR_EXPLAIN.put(41003, "企业 ID（corpid）参数缺失，请联系管理员检查系统配置");
+        ERROR_EXPLAIN.put(41004, "企业微信密钥（secret）参数缺失，请联系管理员检查系统配置");
 
         // 权限与认证
         ERROR_EXPLAIN.put(42001, "企业微信授权凭证已过期，请刷新后重试");
-        ERROR_EXPLAIN.put(48002, "该应用没有创建群聊的权限，请在企业微信管理后台开通");
-        ERROR_EXPLAIN.put(48003, "应用未获得调用接口的权限，请联系管理员");
+        ERROR_EXPLAIN.put(42002, "企业微信刷新令牌已过期，请重新授权");
+        ERROR_EXPLAIN.put(48002, "该应用没有创建群聊的权限，请在企业微信管理后台开通群聊功能");
+        ERROR_EXPLAIN.put(48003, "应用未获得调用该接口的权限，请联系管理员");
+        ERROR_EXPLAIN.put(50001, "企业微信 OAuth 回调域名未授权，请在企微管理后台配置可信域名");
+        ERROR_EXPLAIN.put(50002, "当前用户未授权企业微信应用，请在企微工作台打开应用");
+        ERROR_EXPLAIN.put(301002, "无权限执行该操作，请检查应用在企业微信管理后台的权限配置");
+        ERROR_EXPLAIN.put(301005, "部分用户不在应用的可见范围内，请检查文件中的 userid");
 
         // 群聊相关
         ERROR_EXPLAIN.put(60011, "指定的群聊不存在（可能已被解散）");
+        ERROR_EXPLAIN.put(60012, "群聊 ID 不合法，群聊可能已被删除");
         ERROR_EXPLAIN.put(60111, "成员列表中包含不存在的 UserID，请检查文件中的 userid 是否正确");
-        ERROR_EXPLAIN.put(86001, "群聊不存在或已被删除");
-        ERROR_EXPLAIN.put(86101, "群主 UserID 无效，请检查填写的群主 userid 是否正确");
+        ERROR_EXPLAIN.put(86001, "目标群聊不存在或已被删除");
+        ERROR_EXPLAIN.put(86101, "群主 UserID 无效或不在应用可见范围，请检查群主 userid");
         ERROR_EXPLAIN.put(86102, "群聊名称不能为空");
         ERROR_EXPLAIN.put(86103, "成员列表不能为空，请检查上传的文件是否包含成员信息");
         ERROR_EXPLAIN.put(86104, "群聊名称已被使用，请更换群聊名称");
         ERROR_EXPLAIN.put(86105, "群聊成员数量超过限制（最多 2000 人，含群主）");
-        ERROR_EXPLAIN.put(86201, "群主不在应用的可见范围内，请检查群主 userid");
+        ERROR_EXPLAIN.put(86201, "群主不在应用的可见范围内，请确认群主 userid 是否正确");
         ERROR_EXPLAIN.put(86202, "成员列表中部分用户不在应用的可见范围内");
-        ERROR_EXPLAIN.put(86214, "创建群聊失败，群聊数量超过企业上限");
-        ERROR_EXPLAIN.put(86215, "群聊成员已满（最多 2000 人），无法继续添加");
+        ERROR_EXPLAIN.put(86203, "建群请求缺少必要参数，请填写完整的群聊名称和群主信息");
+        ERROR_EXPLAIN.put(86204, "建群请求参数不合法，请检查输入的群聊名称和群主 userid");
+        ERROR_EXPLAIN.put(86205, "今日群聊创建数量已达到企业上限，请明天再试");
+        ERROR_EXPLAIN.put(86214, "企业群聊总数已达上限，无法继续创建新群");
+        ERROR_EXPLAIN.put(86215, "群聊成员已满（最多 2000 人），无法继续添加成员");
+        ERROR_EXPLAIN.put(86216, "标签 ID 不合法，请联系管理员");
+        ERROR_EXPLAIN.put(86217, "标签 ID 不存在或已被删除");
 
         // 限流
-        ERROR_EXPLAIN.put(45009, "调用频率过高，请稍后再试");
-        ERROR_EXPLAIN.put(45033, "调用频率超过限制，请稍后重试");
+        ERROR_EXPLAIN.put(45009, "调用频率过高（每分钟超过限制），请稍后再试");
+        ERROR_EXPLAIN.put(45016, "今日建群次数达到上限，请明天再试");
+        ERROR_EXPLAIN.put(45033, "调用频率过高（被系统限流），请等待 1 分钟后重试");
     }
 
     public WeChatGroupServiceImpl(Map<String, FileParserStrategy> parserMap,
