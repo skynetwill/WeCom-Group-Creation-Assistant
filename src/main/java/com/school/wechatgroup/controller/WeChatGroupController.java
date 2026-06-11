@@ -1,6 +1,7 @@
 package com.school.wechatgroup.controller;
 
 import com.school.wechatgroup.config.WeChatProperties;
+import com.school.wechatgroup.exception.BusinessException;
 import com.school.wechatgroup.service.GroupRecordService;
 import com.school.wechatgroup.util.IpUtils;
 import com.school.wechatgroup.util.SecurityUtils;
@@ -112,7 +113,7 @@ public class WeChatGroupController {
             }
             String url = "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token=" + token + "&code=" + code;
             Map<String, Object> resp = restTemplate.getForObject(url, Map.class);
-            if (resp != null && Integer.parseInt(resp.get("errcode").toString()) == 0) {
+            if (resp != null && safeParseErrcode(resp.get("errcode")) == 0) {
                 return (String) resp.get("UserId");
             }
             log.error("getuserinfo 失败: {}", resp);
@@ -138,6 +139,19 @@ public class WeChatGroupController {
         }
         log.info("===== 收到建群请求 =====");
         log.info("操作人：{} | 群名：{} | 群主：{} | 文件：{}", userId, groupName, ownerId, file.getOriginalFilename());
+
+        if (groupName == null || groupName.trim().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "请输入群聊名称");
+            return error;
+        }
+        if (ownerId == null || ownerId.trim().isEmpty()) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "请输入群主 userid");
+            return error;
+        }
 
         if (file.isEmpty()) {
             Map<String, Object> error = new HashMap<>();
@@ -165,6 +179,12 @@ public class WeChatGroupController {
                 response.put("errmsg", result.getErrmsg());
             }
             return response;
+        } catch (BusinessException e) {
+            log.warn("业务异常: {}", e.getMessage());
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", e.getMessage());
+            return error;
         } catch (Exception e) {
             log.error("建群异常", e);
             Map<String, Object> error = new HashMap<>();
@@ -288,6 +308,14 @@ public class WeChatGroupController {
 
     private String encodeFilename(String filename) {
         return URLEncoder.encode(filename, StandardCharsets.UTF_8).replace("+", "%20");
+    }
+
+    private int safeParseErrcode(Object errcode) {
+        try {
+            return Integer.parseInt(errcode.toString());
+        } catch (NumberFormatException e) {
+            return -1;
+        }
     }
 
 }

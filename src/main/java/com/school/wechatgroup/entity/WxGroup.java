@@ -34,7 +34,7 @@ public class WxGroup {
     @Column(name = "owner_id", length = 64)
     private String ownerId;
 
-    @Column(name = "member_list", length = 5000)
+    @Column(name = "member_list", length = 20000)
     private String memberList;
 
     @CreationTimestamp

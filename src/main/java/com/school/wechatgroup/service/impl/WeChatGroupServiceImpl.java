@@ -125,7 +125,7 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
         String token = tokenManager.getAccessToken();
         if (token == null || token.isEmpty()) {
             log.error("无法获取 access_token");
-            return new HashMap<>();
+            throw new BusinessException("企业微信 Token 获取失败，请稍后重试");
         }
         String url = "https://qyapi.weixin.qq.com/cgi-bin/appchat/create?access_token=" + token;
 

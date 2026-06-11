@@ -36,7 +36,7 @@ public class WeChatTokenManager {
 
         try {
             Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-            if (response != null && Integer.parseInt(response.get("errcode").toString()) == 0) {
+            if (response != null && safeParseErrcode(response.get("errcode")) == 0) {
                 this.accessToken = (String) response.get("access_token");
                 log.info("Token 更新成功");
             } else {
@@ -49,5 +49,14 @@ public class WeChatTokenManager {
 
     public String getAccessToken() {
         return this.accessToken;
+    }
+
+    private int safeParseErrcode(Object errcode) {
+        try {
+            return Integer.parseInt(errcode.toString());
+        } catch (NumberFormatException e) {
+            log.warn("无法解析 errcode: {}", errcode);
+            return -1;
+        }
     }
 }

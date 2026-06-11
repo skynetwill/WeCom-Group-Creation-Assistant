@@ -13,8 +13,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.UUID;
 
 @Service
@@ -25,13 +27,16 @@ public class GroupRecordServiceImpl implements GroupRecordService {
     private final GroupOperationRepository operationRepo;
     private final WxGroupRepository wxGroupRepo;
     private final UploadFileRepository uploadFileRepo;
+    private final TransactionTemplate transactionTemplate;
 
     public GroupRecordServiceImpl(GroupOperationRepository operationRepo,
                                    WxGroupRepository wxGroupRepo,
-                                   UploadFileRepository uploadFileRepo) {
+                                   UploadFileRepository uploadFileRepo,
+                                   TransactionTemplate transactionTemplate) {
         this.operationRepo = operationRepo;
         this.wxGroupRepo = wxGroupRepo;
         this.uploadFileRepo = uploadFileRepo;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @Override
@@ -67,13 +72,19 @@ public class GroupRecordServiceImpl implements GroupRecordService {
             wxGroupRepo.save(wxGroup);
         }
 
-        // 3. 文件存档（失败不影响主事务）
+        // 3. 文件存档（独立事务，失败不影响主记录）
         try {
-            UploadFile uploadFile = new UploadFile();
-            uploadFile.setOperationId(operationId);
-            uploadFile.setFileName(file.getOriginalFilename());
-            uploadFile.setFileContent(file.getBytes());
-            uploadFileRepo.save(uploadFile);
+            transactionTemplate.executeWithoutResult(status -> {
+                try {
+                    UploadFile uploadFile = new UploadFile();
+                    uploadFile.setOperationId(operationId);
+                    uploadFile.setFileName(file.getOriginalFilename());
+                    uploadFile.setFileContent(file.getBytes());
+                    uploadFileRepo.save(uploadFile);
+                } catch (IOException e) {
+                    throw new RuntimeException("文件读取失败", e);
+                }
+            });
         } catch (Exception e) {
             log.error("文件存档失败 | operationId={} | 文件名={}", operationId, file.getOriginalFilename(), e);
         }

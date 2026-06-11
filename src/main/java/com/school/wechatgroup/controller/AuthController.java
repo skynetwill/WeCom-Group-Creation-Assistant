@@ -10,6 +10,7 @@ import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -50,9 +51,6 @@ public class AuthController {
         return attempts > MAX_ATTEMPTS;
     }
 
-    private void incrementAttempts(String ip) {
-        loginAttempts.merge(ip, 1, Integer::sum);
-    }
 
     @GetMapping("/csrf")
     public Map<String, Object> csrf(HttpServletRequest request) {
@@ -110,7 +108,6 @@ public class AuthController {
             loginAttempts.remove(clientIp);
             attemptWindowStart.remove(clientIp);
         } catch (IllegalArgumentException | BusinessException e) {
-            incrementAttempts(clientIp);
             result.put("success", false);
             result.put("message", e.getMessage());
         } catch (Exception e) {
@@ -142,6 +139,17 @@ public class AuthController {
         }
 
         return result;
+    }
+
+    @Scheduled(fixedRate = 300000)  // 每5分钟清理一次
+    public void cleanRateLimitCache() {
+        long now = System.currentTimeMillis();
+        attemptWindowStart.forEach((ip, time) -> {
+            if (now - time > WINDOW_MS * 2) {
+                loginAttempts.remove(ip);
+                attemptWindowStart.remove(ip);
+            }
+        });
     }
 
     @GetMapping("/status")
