@@ -15,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -52,7 +51,9 @@ public class GroupRecordServiceImpl implements GroupRecordService {
         operation.setResultMessage(result.getMessage());
         operation.setChatId("success".equals(result.getStatus()) ? result.getChatId() : null);
         operation.setClientIp(ip);
-        operation.setCreatedAt(LocalDateTime.now());
+        if (result.getUserList() != null && !result.getUserList().isEmpty()) {
+            operation.setMemberCount(result.getUserList().split(",").length);
+        }
         operationRepo.save(operation);
 
         // 2. 群聊记录（仅成功时写入）
@@ -63,7 +64,6 @@ public class GroupRecordServiceImpl implements GroupRecordService {
             wxGroup.setGroupName(groupName);
             wxGroup.setOwnerId(ownerId);
             wxGroup.setMemberList(result.getUserList());
-            wxGroup.setCreatedAt(LocalDateTime.now());
             wxGroupRepo.save(wxGroup);
         }
 
@@ -73,7 +73,6 @@ public class GroupRecordServiceImpl implements GroupRecordService {
             uploadFile.setOperationId(operationId);
             uploadFile.setFileName(file.getOriginalFilename());
             uploadFile.setFileContent(file.getBytes());
-            uploadFile.setCreatedAt(LocalDateTime.now());
             uploadFileRepo.save(uploadFile);
         } catch (Exception e) {
             log.error("文件存档失败 | operationId={} | 文件名={}", operationId, file.getOriginalFilename(), e);

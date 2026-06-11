@@ -5,30 +5,36 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "t_app_user")
+@Table(name = "t_app_user", indexes = {
+    @Index(name = "idx_username", columnList = "username", unique = true)
+})
 public class AppUser {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false)
+    @Column(unique = true, nullable = false, length = 64)
     private String username;
 
-    @Column(nullable = false)
+    @Column(nullable = false, length = 128)
     private String password;
 
+    @Column(length = 64)
     private String nickname;
 
     @Column(nullable = false)
     private Boolean enabled = true;
 
-    @Column(name = "created_at")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     public AppUser() {
     }

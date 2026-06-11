@@ -8,50 +8,57 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "t_group_operation")
+@Table(name = "t_group_operation", indexes = {
+    @Index(name = "idx_operation_id", columnList = "operation_id"),
+    @Index(name = "idx_operator_user_id", columnList = "operator_user_id"),
+    @Index(name = "idx_created_at", columnList = "created_at")
+})
 public class GroupOperation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "operation_id")
+    @Column(name = "operation_id", nullable = false, length = 16)
     private String operationId;
 
-    @Column(name = "group_name")
+    @Column(name = "group_name", nullable = false, length = 128)
     private String groupName;
 
-    @Column(name = "owner_id")
+    @Column(name = "owner_id", nullable = false, length = 64)
     private String ownerId;
 
-    @Column(name = "operator_user_id")
+    @Column(name = "operator_user_id", length = 64)
     private String operatorUserId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status")
+    @Column(name = "status", nullable = false, length = 16)
     private OperationStatus status;
 
     @Column(name = "result_message", length = 2000)
     private String resultMessage;
 
-    @Column(name = "chat_id")
+    @Column(name = "chat_id", length = 64)
     private String chatId;
 
     @Column(name = "member_count")
     private Integer memberCount;
 
-    @Column(name = "client_ip")
+    @Column(name = "client_ip", length = 45)
     private String clientIp;
 
-    @Column(name = "file_name")
+    @Column(name = "file_name", length = 255)
     private String fileName;
 
-    @Column(name = "created_at")
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     public GroupOperation() {
