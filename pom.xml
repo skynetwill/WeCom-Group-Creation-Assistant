@@ -59,6 +59,25 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- MyBatis-Plus：国内公司主流 ORM（与 JPA 并存） -->
+        <dependency>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+            <version>3.5.7</version>
+        </dependency>
+
+        <!-- RabbitMQ：消息队列异步处理 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- Micrometer Prometheus：JVM 指标暴露 -->
+        <dependency>
+            <groupId>io.micrometer</groupId>
+            <artifactId>micrometer-registry-prometheus</artifactId>
+        </dependency>
+
         <!-- H2 内存数据库（开发环境） -->
         <dependency>
             <groupId>com.h2database</groupId>
