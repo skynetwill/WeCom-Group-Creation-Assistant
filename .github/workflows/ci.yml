@@ -29,16 +29,19 @@ jobs:
           distribution: "temurin"
           cache: maven
 
-      - name: 3. 编译 + 单元测试
+      - name: 3. 给 mvnw 加执行权限
+        run: chmod +x mvnw
+
+      - name: 4. 编译 + 单元测试
         run: ./mvnw test -B
 
-      - name: 4. 打包
+      - name: 5. 打包
         run: ./mvnw package -DskipTests -B
 
-      - name: 5. 构建 Docker 镜像
+      - name: 6. 构建 Docker 镜像
         run: docker build -t wechat-group:${{ github.sha }} .
 
-      - name: 6. 推送到容器仓库（示例，需要配置 secrets）
+      - name: 7. 推送到容器仓库（示例，需要配置 secrets）
         if: github.ref == 'refs/heads/main'
         run: |
           echo "docker tag wechat-group:${{ github.sha }} registry.example.com/wechat-group:${{ github.sha }}"
