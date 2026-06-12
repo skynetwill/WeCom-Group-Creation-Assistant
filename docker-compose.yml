@@ -1,5 +1,10 @@
 version: "3.8"
 
+# ──────────────────────────────────────────
+#  企业微信批量建群 — Docker 多实例分布式部署
+#  6 容器: nginx + app1~3 + mysql + redis
+# ──────────────────────────────────────────
+
 services:
   # ==================== Nginx 负载均衡 ====================
   nginx:
@@ -10,50 +15,105 @@ services:
     volumes:
       - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
     depends_on:
-      - app1
-      - app2
-      - app3
+      app1:
+        condition: service_started
+      app2:
+        condition: service_started
+      app3:
+        condition: service_started
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
 
   # ==================== Spring Boot 实例 x3 ====================
   app1:
     build: .
     container_name: wg-app1
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SERVER_PORT=8082
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8082
+      # === 分布式必须共享的密钥 ===
+      JWT_SECRET: "WcGr0up-D1str1but3d-S3cr3t-K3y-2024!P1easeChangeMe"
+      # === 企业微信凭证（从 .env 文件或流水线注入） ===
+      WECHAT_CORPID: "${WECHAT_CORPID:-请替换}"
+      WECHAT_CORPSECRET: "${WECHAT_CORPSECRET:-请替换}"
+      WECHAT_AGENTID: "${WECHAT_AGENTID:-请替换}"
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   app2:
     build: .
     container_name: wg-app2
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SERVER_PORT=8082
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8082
+      JWT_SECRET: "WcGr0up-D1str1but3d-S3cr3t-K3y-2024!P1easeChangeMe"
+      WECHAT_CORPID: "${WECHAT_CORPID:-请替换}"
+      WECHAT_CORPSECRET: "${WECHAT_CORPSECRET:-请替换}"
+      WECHAT_AGENTID: "${WECHAT_AGENTID:-请替换}"
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   app3:
     build: .
     container_name: wg-app3
     environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - SERVER_PORT=8082
+      SPRING_PROFILES_ACTIVE: docker
+      SERVER_PORT: 8082
+      JWT_SECRET: "WcGr0up-D1str1but3d-S3cr3t-K3y-2024!P1easeChangeMe"
+      WECHAT_CORPID: "${WECHAT_CORPID:-请替换}"
+      WECHAT_CORPSECRET: "${WECHAT_CORPSECRET:-请替换}"
+      WECHAT_AGENTID: "${WECHAT_AGENTID:-请替换}"
     depends_on:
       mysql:
         condition: service_healthy
       redis:
         condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8082/actuator/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   # ==================== MySQL 8.0 ====================
   mysql:
@@ -74,6 +134,11 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 512M
 
   # ==================== Redis 7（共享 Session） ====================
   redis:
@@ -84,7 +149,17 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
     restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 256M
 
 volumes:
   mysql-data:

@@ -78,6 +78,12 @@
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
 
+        <!-- Spring Boot Actuator：健康检查 + Docker healthcheck -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
+
         <!-- Spring Session + Redis：分布式 Session 共享 -->
         <dependency>
             <groupId>org.springframework.session</groupId>
