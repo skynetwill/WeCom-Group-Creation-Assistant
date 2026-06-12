@@ -148,53 +148,89 @@ cp src/main/resources/application.properties.example \
 
 ---
 
+## 各分支对比
+
+| 分支 | 架构 | 安全框架 | 分布式 |
+|------|------|---------|--------|
+| `monolithic` | 单机 Jar | 简单表单登录 | ❌ |
+| `distributed` | 单机 Jar | 79 文件安全框架 | ❌ |
+| `docker-distributed` | Docker Compose 6 容器 | 完整安全 + 全 Redis 状态共享 | ✅ |
+
+---
+
 ## Docker 分布式部署（docker-distributed 分支）
 
 ### 架构
 
 ```
-                    ┌─→ wg-app1 (Spring Boot 实例 1) ─┐
-Browser → wg-nginx ─┼─→ wg-app2 (Spring Boot 实例 2) ─┼→ wg-redis（Session）
-  :80              └─→ wg-app3 (Spring Boot 实例 3) ─┘   wg-mysql（数据）
+            Docker Host（1 台机器模拟多实例）
+┌──────────────────────────────────────────────────────────┐
+│                    ┌─→ wg-app1 (JVM 1) ─┐               │
+│  Browser → nginx ─┼─→ wg-app2 (JVM 2) ─┼→ Redis ─┐     │
+│    :80           └─→ wg-app3 (JVM 3) ─┘   MySQL  │     │
+│                                                    │     │
+│  Redis 存储（跨实例共享）：                            │     │
+│    sessions:{user}  → ZSet    会话注册表             │     │
+│    ratelimit:{ip}:* → INCR    限流计数器             │     │
+│    wechat:access_token → SETNX 分布式锁             │     │
+└──────────────────────────────────────────────────────────┘
 ```
+
+### 什么是"实例"
+
+一个实例 = 一个独立的 JVM 进程。3 个实例虽然在同一台机器上，但拥有独立的内存空间，互不可见。所有状态通过 Redis 共享，与真正多机器的行为完全一致。
 
 ### 一键启动
 
 ```bash
-# 克隆项目并切换到 docker 分支
 git checkout docker-distributed
+cp .env.example .env          # 填入企业微信凭证
+docker compose up -d           # 6 容器：nginx + 3x app + mysql + redis
 
-# 启动全部 6 个容器（Nginx + 3x App + MySQL + Redis）
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f app1 app2 app3
-
-# 验证：多次刷新 http://localhost，查看各实例日志确认轮询
+# 查看日志（Nginx 轮询到哪个实例）
+docker compose logs -f app1 app2 app3
 ```
 
-### 验证分布式 Session 共享
+### 验证分布式
 
 ```bash
-# 1. 登录（Nginx 路由到 app1）
-curl -X POST http://localhost/login -d "username=admin&password=xxx" -c cookies.txt
+# 1. 登录 → Nginx 路由到 app1
+curl -X POST http://localhost/api/auth/login \
+  -d "username=admin&password=你的密码" -c cookies.txt
 
 # 2. 停掉 app1
 docker stop wg-app1
 
-# 3. 用同一 session 访问（Nginx 路由到 app2 或 app3）
+# 3. 同一 cookie 访问 → Nginx 路由到 app2/app3
 curl http://localhost/index -b cookies.txt
-# → 仍然保持登录状态（Session 从 Redis 加载）
+# ✅ 仍然登录（Session 从 Redis 恢复）
+
+# 4. 验证限流跨实例
+for i in $(seq 1 6); do
+  curl -X POST http://localhost/api/auth/login \
+    -d "username=admin&password=wrong" -H "X-CSRF-TOKEN: xxx"
+done
+# ✅ 第 6 次请求被限流（3 个实例共享计数器）
 ```
 
-### docker-compose 服务清单
+### 服务清单
 
-| 服务 | 容器名 | 端口 | 说明 |
-|------|--------|------|------|
-| nginx | wg-nginx | 80→80 | 负载均衡（weight 1:1:1） |
-| app1~3 | wg-app1/2/3 | 8082 | Spring Boot 实例 |
-| mysql | wg-mysql | 3306 | 持久化数据库 |
-| redis | wg-redis | 6379 | 共享 Session 存储 |
+| 服务 | 容器名 | 端口 | 资源限制 | 说明 |
+|------|--------|------|---------|------|
+| nginx | wg-nginx | 80 | 0.5CPU/128M | 负载均衡（max_fails=3, keepalive=32） |
+| app1~3 | wg-app1/2/3 | 8082 | 1CPU/512M | Spring Boot 实例（独立 JVM） |
+| mysql | wg-mysql | 3306 | 1CPU/512M | 持久化数据（healthcheck） |
+| redis | wg-redis | 6379 | 0.5CPU/256M | 共享状态（AOF 持久化） |
+
+### 分布式改造清单
+
+| 组件 | 单机版 | 分布式版 |
+|------|--------|---------|
+| HttpSession | JVM 内存 | Redis + Spring Session |
+| SessionRegistry | ConcurrentHashMap | Redis ZSet（全局并发会话限制） |
+| RateLimitService | ConcurrentHashMap | Redis INCR + EXPIRE（全局限流） |
+| WeChatTokenManager | volatile String（互踢） | Redis SETNX 分布式锁（单实例刷新） |
+| JWT Secret | 每实例随机 | 共享环境变量 |
 
 ---
 
@@ -269,10 +305,16 @@ src/main/java/com/school/wechatgroup/
 | Spring AOP | 3.2.5 | 方法安全 |
 | Spring Security Crypto | 6.2.4 | BCrypt |
 | Thymeleaf | 3.x | 模板 |
-| Apache POI | 5.2.5 | Excel/Word |
+| Apache POI | 5.3.0 | Excel/Word |
 | OpenCSV | 5.7.1 | CSV |
+| Spring Session | 3.2.x | Redis Session 共享 |
+| Spring Data Redis | 3.2.x | Redis 数据访问 |
+| Spring Boot Actuator | 3.2.5 | Docker 健康检查 |
 | H2 | 2.x | 开发库 |
-| MySQL | 8.x | 生产库 |
+| MySQL | 8.0 | 生产库 |
+| Redis | 7 | 共享状态 |
+| Nginx | alpine | 负载均衡 |
+| Docker Compose | 3.8 | 容器编排 |
 
 ---
 
