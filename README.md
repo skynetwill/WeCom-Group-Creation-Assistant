@@ -341,6 +341,89 @@ src/main/java/com/school/wechatgroup/
 
 ---
 
+## 部署到服务器
+
+### 1. 打包
+
+```bash
+./mvnw clean package -DskipTests
+# 产出: target/wechat-group-0.0.1-SNAPSHOT.jar
+```
+
+### 2. 上传到服务器
+
+```bash
+scp target/wechat-group-0.0.1-SNAPSHOT.jar root@你的服务器IP:/app/
+```
+
+### 3. 配置生产环境
+
+编辑 `application-prod.properties`，填入真实密码：
+
+```properties
+spring.datasource.password=你的MySQL密码
+app.base-url=https://你的穿透域名
+```
+
+### 4. 启动
+
+```bash
+ssh root@你的服务器IP
+cd /app
+
+# 用生产配置启动（后台运行 + 崩溃自动重启）
+nohup java -jar wechat-group-0.0.1-SNAPSHOT.jar \
+  --spring.profiles.active=prod > logs/app.log 2>&1 &
+
+# 或者配成 systemd 服务开机自启
+```
+
+### 5. 开发 vs 生产
+
+| 命令 | 数据库 | 用途 |
+|------|--------|------|
+| `./mvnw spring-boot:run` | H2 内存 | 本地开发 |
+| `java -jar ...` | H2 内存 | 本地开发 |
+| `java -jar ... --spring.profiles.active=prod` | MySQL | 服务器部署 |
+
+### 6. 查日志
+
+```bash
+tail -f logs/wechat-group.log          # 实时日志
+tail -100 logs/wechat-group.log        # 最近100行
+grep "ERROR" logs/wechat-group.log     # 只看错误
+```
+
+### 7. 查数据库
+
+**开发环境（H2）**：浏览器打开 `http://localhost:8082/h2-console`
+
+```
+JDBC URL: jdbc:h2:mem:wechat_group
+用户名: sa  密码: (空)
+```
+
+**生产环境（MySQL）**：用 DBeaver 远程连接
+
+```
+主机: 服务器IP
+端口: 3306
+用户: wechat_app
+密码: wechat_pass_2024
+```
+
+### 8. 远程查数据的原理
+
+```
+你的笔记本（DBeaver）
+    ↓ TCP 连接 → 服务器IP:3306
+服务器上的 MySQL
+    ↓ 返回数据
+你的笔记本上看到表和数据
+```
+
+---
+
 ## 许可证
 
 Apache 2.0
