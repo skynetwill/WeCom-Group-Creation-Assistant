@@ -25,7 +25,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -41,7 +40,6 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@CrossOrigin(origins = "*")
 public class WeChatGroupController {
 
     private static final Logger log = LoggerFactory.getLogger(WeChatGroupController.class);
@@ -91,8 +89,8 @@ public class WeChatGroupController {
                 response.sendRedirect("/index?userId=" + URLEncoder.encode(fetchedUserId, StandardCharsets.UTF_8));
                 return;
             }
-            log.warn("OAuth code 换取 userId 失败，降级为本地用户");
-            response.sendRedirect("/index?userId=本地用户");
+            log.warn("OAuth code 换取 userId 失败");
+            response.sendRedirect("/login?error=oauth_failed");
             return;
         }
 
@@ -119,7 +117,7 @@ public class WeChatGroupController {
             if (resp != null && safeParseErrcode(resp.get("errcode")) == 0) {
                 return (String) resp.get("UserId");
             }
-            log.error("getuserinfo 失败: {}", resp);
+            log.error("getuserinfo 失败: errcode={}", resp != null ? resp.get("errcode") : "null");
         } catch (Exception e) {
             log.error("getuserinfo 异常", e);
         }
@@ -136,6 +134,16 @@ public class WeChatGroupController {
             @RequestParam(value = "userId", required = false, defaultValue = "本地用户") String userIdParam,
             HttpServletRequest request
     ) {
+        // CSRF 防护
+        String csrfToken = request.getHeader("X-CSRF-TOKEN");
+        String sessionToken = (String) request.getSession().getAttribute("CSRF_TOKEN");
+        if (sessionToken != null && csrfToken != null && !sessionToken.equals(csrfToken)) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "无效请求");
+            return error;
+        }
+
         String userId = SecurityUtils.getCurrentUserId(request);
         if (userId == null) {
             userId = userIdParam;
@@ -161,6 +169,16 @@ public class WeChatGroupController {
             error.put("success", false);
             error.put("message", "上传失败：请选择文件");
             log.warn("上传失败：请选择文件");
+            return error;
+        }
+
+        // 文件类型白名单
+        String fileName = file.getOriginalFilename();
+        if (fileName == null || !fileName.matches("(?i).*\\.(csv|xlsx|xls)$")) {
+            Map<String, Object> error = new HashMap<>();
+            error.put("success", false);
+            error.put("message", "仅支持 CSV、XLSX、XLS 格式文件");
+            log.warn("非法文件类型: {}", fileName);
             return error;
         }
 
@@ -192,7 +210,7 @@ public class WeChatGroupController {
             log.error("建群异常", e);
             Map<String, Object> error = new HashMap<>();
             error.put("success", false);
-            error.put("message", "建群失败：" + e.getMessage());
+            error.put("message", "建群失败，请联系管理员");
             return error;
         }
     }

@@ -55,7 +55,7 @@ public class SecurityContextFilter implements Filter {
                         AppUserDetails details = new AppUserDetails(user);
                         UsernamePasswordAuthenticationToken auth =
                                 new UsernamePasswordAuthenticationToken(
-                                        details, user.getPassword(), details.getAuthorities());
+                                        details, null, details.getAuthorities());
                         SecurityContext ctx = new SecurityContextImpl();
                         ctx.setAuthentication(auth);
                         SecurityContextHolder.setContext(ctx);

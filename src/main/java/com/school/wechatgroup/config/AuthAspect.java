@@ -73,9 +73,12 @@ public class AuthAspect {
             return send403(request, attrs.getResponse());
         }
 
-        if ("ADMIN".equals(requireRole.value()) && !"ADMIN".equals(user.getRole())) {
+        // 角色匹配：ADMIN 隐式拥有 USER 权限
+        String required = requireRole.value();
+        String userRole = user.getRole() != null ? user.getRole() : "USER";
+        if (!required.equals(userRole) && !("USER".equals(required) && "ADMIN".equals(userRole))) {
             log.warn("用户 {} 尝试访问需要 {} 角色的方法，当前角色: {}",
-                    userId, requireRole.value(), user.getRole());
+                    userId, required, userRole);
             return send403(request, attrs.getResponse());
         }
 

@@ -44,7 +44,8 @@ public class SecurityHeadersFilter implements Filter {
         httpResponse.setHeader("Permissions-Policy",
                 "camera=(), microphone=(), geolocation=()");
 
-        // Content-Security-Policy: 允许同源脚本和 Bootstrap/Google Fonts CDN
+        // Content-Security-Policy
+        // 'unsafe-inline' 用于 Thymeleaf 模板内联 <script>/<style>；长期应提取为外部文件
         httpResponse.setHeader("Content-Security-Policy",
                 "default-src 'self'; "
                         + "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "

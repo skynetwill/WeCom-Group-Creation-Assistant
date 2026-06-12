@@ -63,7 +63,7 @@ public class RememberMeInterceptor implements HandlerInterceptor {
         // 设置 SecurityContext
         AppUserDetails details = new AppUserDetails(user);
         UsernamePasswordAuthenticationToken auth =
-                new UsernamePasswordAuthenticationToken(details, user.getPassword(),
+                new UsernamePasswordAuthenticationToken(details, null,
                         details.getAuthorities());
         SecurityContext ctx = new SecurityContextImpl();
         ctx.setAuthentication(auth);

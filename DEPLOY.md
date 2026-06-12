@@ -187,6 +187,7 @@ systemctl start wechat-group
 # 应用日志（控制台输出）
 journalctl -u wechat-group -f
 
-# 操作审计日志
-tail -f logs/group_operate.log
+# 操作审计日志（已迁移至数据库 t_audit_log / t_group_operation 表）
+# 通过管理接口查询：GET /api/admin/audit
+journalctl -u wechat-group -f
 ```

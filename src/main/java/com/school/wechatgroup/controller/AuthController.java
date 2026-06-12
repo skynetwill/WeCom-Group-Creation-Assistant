@@ -10,7 +10,6 @@ import com.school.wechatgroup.security.SecurityContextHolder;
 import com.school.wechatgroup.security.impl.RememberMeServicesImpl;
 import com.school.wechatgroup.service.AuthService;
 import com.school.wechatgroup.service.RateLimitService;
-import com.school.wechatgroup.service.impl.AuthServiceImpl;
 import com.school.wechatgroup.util.IpUtils;
 import com.school.wechatgroup.vo.LoginResultVO;
 import jakarta.servlet.http.HttpServletRequest;
@@ -36,20 +35,17 @@ public class AuthController {
     private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthService authService;
-    private final AuthServiceImpl authServiceImpl;
     private final RememberMeServicesImpl rememberMeServices;
     private final SessionRegistry sessionRegistry;
     private final com.school.wechatgroup.config.AuthProperties authProperties;
     private final RateLimitService rateLimitService;
 
     public AuthController(@Autowired(required = false) AuthService authService,
-                          @Autowired(required = false) AuthServiceImpl authServiceImpl,
                           @Autowired(required = false) RememberMeServicesImpl rememberMeServices,
                           @Autowired(required = false) SessionRegistry sessionRegistry,
                           @Autowired(required = false) com.school.wechatgroup.config.AuthProperties authProperties,
                           @Autowired(required = false) RateLimitService rateLimitService) {
         this.authService = authService;
-        this.authServiceImpl = authServiceImpl;
         this.rememberMeServices = rememberMeServices;
         this.sessionRegistry = sessionRegistry;
         this.authProperties = authProperties;
@@ -99,7 +95,7 @@ public class AuthController {
             LoginResultVO loginResult = authService.login(username, password, clientIp, rememberMe);
 
             // MFA 检查：用户启用了 MFA 则需要额外验证
-            if (authServiceImpl != null) {
+            if (authService != null) {
                 boolean mfaRequired = false;
                 try {
                     var profile = authService.getProfile(loginResult.getUserId());
@@ -311,7 +307,7 @@ public class AuthController {
     @GetMapping("/mfa/setup")
     public Map<String, Object> mfaSetup(HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
-        if (authServiceImpl == null) {
+        if (authService == null) {
             result.put("success", false);
             result.put("message", "认证功能未启用");
             return result;
@@ -323,7 +319,7 @@ public class AuthController {
             return result;
         }
         try {
-            String secret = authServiceImpl.setupMFA(userId);
+            String secret = authService.setupMFA(userId);
             result.put("success", true);
             result.put("secret", secret);
             result.put("uri", "otpauth://totp/WeChatGroup:" + userId
@@ -339,11 +335,20 @@ public class AuthController {
     public Map<String, Object> mfaEnable(@RequestParam String code,
                                           HttpServletRequest request) {
         Map<String, Object> result = new HashMap<>();
-        if (authServiceImpl == null) {
+        if (authService == null) {
             result.put("success", false);
             result.put("message", "认证功能未启用");
             return result;
         }
+        // CSRF 验证
+        String csrfToken = request.getHeader("X-CSRF-TOKEN");
+        String sessionToken = (String) request.getSession().getAttribute("CSRF_TOKEN");
+        if (sessionToken == null || csrfToken == null || !sessionToken.equals(csrfToken)) {
+            result.put("success", false);
+            result.put("message", "无效请求");
+            return result;
+        }
+
         String userId = (String) request.getSession().getAttribute(SessionKeys.LOGIN_USER_ID);
         if (userId == null) {
             result.put("success", false);
@@ -351,7 +356,7 @@ public class AuthController {
             return result;
         }
         try {
-            authServiceImpl.enableMFA(userId, code, IpUtils.getClientIp(request));
+            authService.enableMFA(userId, code, IpUtils.getClientIp(request));
             result.put("success", true);
             result.put("message", "MFA 已启用");
         } catch (BusinessException e) {
@@ -366,13 +371,25 @@ public class AuthController {
                                           HttpServletRequest request,
                                           HttpServletResponse response) {
         Map<String, Object> result = new HashMap<>();
-        if (authServiceImpl == null) {
+        if (authService == null) {
             result.put("success", false);
             result.put("message", "认证功能未启用");
             return result;
         }
 
+        // CSRF 验证：使用临时 session 中的 token
         HttpSession tempSession = request.getSession(false);
+        if (tempSession != null) {
+            String csrfToken = request.getHeader("X-CSRF-TOKEN");
+            String sessionToken = (String) tempSession.getAttribute("CSRF_TOKEN");
+            if (sessionToken != null && csrfToken != null && !sessionToken.equals(csrfToken)) {
+                result.put("success", false);
+                result.put("message", "无效请求");
+                return result;
+            }
+        }
+
+        tempSession = request.getSession(false);
         if (tempSession == null) {
             result.put("success", false);
             result.put("message", "MFA 会话已过期，请重新登录");
@@ -389,7 +406,7 @@ public class AuthController {
             return result;
         }
 
-        boolean verified = authServiceImpl.verifyMFA(pendingUser, code, IpUtils.getClientIp(request));
+        boolean verified = authService.verifyMFA(pendingUser, code, IpUtils.getClientIp(request));
         if (!verified) {
             result.put("success", false);
             result.put("message", "MFA 验证码不正确");

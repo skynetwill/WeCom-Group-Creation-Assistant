@@ -1,0 +1,14 @@
+target/
+.git/
+.gitignore
+*.md
+nginx.conf
+nginx-lb.conf
+DEPLOY.md
+docker-compose.yml
+Dockerfile
+.dockerignore
+.vscode/
+.idea/
+*.iml
+logs/

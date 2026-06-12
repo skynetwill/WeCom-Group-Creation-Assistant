@@ -1,0 +1,91 @@
+version: "3.8"
+
+services:
+  # ==================== Nginx 负载均衡 ====================
+  nginx:
+    image: nginx:alpine
+    container_name: wg-nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx-lb.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app1
+      - app2
+      - app3
+    restart: unless-stopped
+
+  # ==================== Spring Boot 实例 x3 ====================
+  app1:
+    build: .
+    container_name: wg-app1
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  app2:
+    build: .
+    container_name: wg-app2
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  app3:
+    build: .
+    container_name: wg-app3
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SERVER_PORT=8082
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  # ==================== MySQL 8.0 ====================
+  mysql:
+    image: mysql:8.0
+    container_name: wg-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass_2024
+      MYSQL_DATABASE: wechat_group
+      MYSQL_USER: wechat_app
+      MYSQL_PASSWORD: wechat_pass_2024
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ==================== Redis 7（共享 Session） ====================
+  redis:
+    image: redis:7-alpine
+    container_name: wg-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+
+volumes:
+  mysql-data:
+  redis-data:

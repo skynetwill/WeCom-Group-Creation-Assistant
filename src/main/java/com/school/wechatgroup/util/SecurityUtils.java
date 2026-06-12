@@ -12,7 +12,9 @@ public final class SecurityUtils {
     }
 
     public static String getCurrentUserId(HttpServletRequest request) {
-        Object id = request.getSession().getAttribute(SessionKeys.LOGIN_USER_ID);
+        var session = request.getSession(false);
+        if (session == null) return null;
+        Object id = session.getAttribute(SessionKeys.LOGIN_USER_ID);
         return id != null ? (String) id : null;
     }
 

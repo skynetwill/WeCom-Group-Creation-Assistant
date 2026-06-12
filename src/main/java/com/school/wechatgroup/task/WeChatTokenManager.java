@@ -43,10 +43,10 @@ public class WeChatTokenManager {
                 this.accessToken = (String) response.get("access_token");
                 log.info("Token 更新成功");
             } else {
-                log.error("获取 Token 失败: {}", response);
+                log.error("获取 Token 失败: errcode={}", response != null ? response.get("errcode") : "null");
             }
         } catch (Exception e) {
-            log.error("获取 Token 发生异常: {}", e.getMessage(), e);
+            log.error("获取 Token 网络异常，请检查企业微信 API 连通性");
         }
     }
 

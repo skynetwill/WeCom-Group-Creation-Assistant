@@ -132,7 +132,8 @@ public class WeChatGroupServiceImpl implements WeChatGroupService {
 
         try {
             Map<String, Object> apiResult = callCreateGroupApi(groupName, ownerId, uniqueMembers);
-            int errcode = ((Number) apiResult.get("errcode")).intValue();
+            Object errcodeObj = apiResult.get("errcode");
+            int errcode = errcodeObj instanceof Number ? ((Number) errcodeObj).intValue() : -1;
             String errmsg = (String) apiResult.get("errmsg");
 
             if (errcode == 0) {

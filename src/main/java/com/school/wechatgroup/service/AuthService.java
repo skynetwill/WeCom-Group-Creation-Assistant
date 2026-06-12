@@ -13,4 +13,11 @@ public interface AuthService {
     AuthStatusVO getStatus(HttpSession session);
     void changePassword(String username, String oldPassword, String newPassword);
     Map<String, Object> getProfile(String username);
+
+    /** MFA TOTP 密钥生成 */
+    String setupMFA(String username);
+    /** MFA TOTP 码验证 */
+    boolean verifyMFA(String username, String code, String clientIp);
+    /** 启用 MFA */
+    void enableMFA(String username, String code, String clientIp);
 }

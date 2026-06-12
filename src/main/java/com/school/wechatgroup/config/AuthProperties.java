@@ -7,7 +7,7 @@ public class AuthProperties {
 
     private boolean enabled = false;
     private String defaultUsername = "admin";
-    private String defaultPassword = "admin123";
+    private String defaultPassword = "";
     private int lockThreshold = 5;
     private int lockDurationMinutes = 15;
     private int maxSessions = 5;

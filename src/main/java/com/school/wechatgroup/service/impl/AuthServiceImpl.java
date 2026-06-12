@@ -27,7 +27,9 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -65,9 +67,20 @@ public class AuthServiceImpl implements AuthService {
     @PostConstruct
     public void initDefaultAdmin() {
         if (userRepository.count() == 0) {
+            String password = authProperties.getDefaultPassword();
+            // 密码未配置或使用常见默认值时，生成随机安全密码
+            if (password == null || password.isEmpty() || "admin123".equals(password)) {
+                byte[] randomBytes = new byte[12];
+                new SecureRandom().nextBytes(randomBytes);
+                password = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
+                log.warn("==========================================");
+                log.warn("未配置默认管理员密码，已生成随机密码: {}", password);
+                log.warn("请复制上面的密码，或修改 app.auth.default-password");
+                log.warn("==========================================");
+            }
             AppUser admin = new AppUser();
             admin.setUsername(authProperties.getDefaultUsername());
-            admin.setPassword(passwordEncoder.encode(authProperties.getDefaultPassword()));
+            admin.setPassword(passwordEncoder.encode(password));
             admin.setNickname("管理员");
             admin.setEnabled(true);
             admin.setMustChangePassword(true);
@@ -75,12 +88,6 @@ public class AuthServiceImpl implements AuthService {
             admin.setPasswordLastModified(LocalDateTime.now());
             userRepository.save(admin);
             log.info("首次启动，已创建默认管理员账号: {}", authProperties.getDefaultUsername());
-            if (authProperties.getDefaultPassword().equals("admin123")) {
-                log.warn("==========================================");
-                log.warn("安全警告: 正在使用默认管理员密码 'admin123'！");
-                log.warn("请在生产环境修改 app.auth.default-password");
-                log.warn("==========================================");
-            }
         }
     }
 

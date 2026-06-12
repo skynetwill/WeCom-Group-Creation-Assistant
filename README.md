@@ -148,52 +148,53 @@ cp src/main/resources/application.properties.example \
 
 ---
 
-## 分布式部署
+## Docker 分布式部署（docker-distributed 分支）
 
-### 当前架构（单机）
-
-```
-Browser → Nginx (80) → Spring Boot (8082)
-                          ├── HttpSession（内存）
-                          ├── SessionRegistry（ConcurrentHashMap）
-                          └── RateLimitService（ConcurrentHashMap）
-```
-
-### 分布式升级
-
-添加 Redis + Spring Session：
-
-```xml
-<dependency>
-    <groupId>org.springframework.session</groupId>
-    <artifactId>spring-session-data-redis</artifactId>
-</dependency>
-<dependency>
-    <groupId>org.springframework.boot</groupId>
-    <artifactId>spring-boot-starter-data-redis</artifactId>
-</dependency>
-```
-
-```properties
-spring.session.store-type=redis
-spring.data.redis.host=redis-host
-spring.data.redis.port=6379
-```
-
-升级后架构：
+### 架构
 
 ```
-          ┌→ Spring Boot #1 ─┐
-Nginx LB ─┼→ Spring Boot #2 ─┼→ Redis（Session）
-          └→ Spring Boot #3 ─┘   MySQL（数据）
+                    ┌─→ wg-app1 (Spring Boot 实例 1) ─┐
+Browser → wg-nginx ─┼─→ wg-app2 (Spring Boot 实例 2) ─┼→ wg-redis（Session）
+  :80              └─→ wg-app3 (Spring Boot 实例 3) ─┘   wg-mysql（数据）
 ```
 
-| 组件 | 单机 | 分布式改造 |
-|------|------|-----------|
-| HttpSession | 内存 | Redis + Spring Session |
-| SessionRegistry | ConcurrentHashMap | Redis pub/sub |
-| RateLimitService | ConcurrentHashMap | Redis 计数器 |
-| JWT | 独立验证 | 无需改动 |
+### 一键启动
+
+```bash
+# 克隆项目并切换到 docker 分支
+git checkout docker-distributed
+
+# 启动全部 6 个容器（Nginx + 3x App + MySQL + Redis）
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f app1 app2 app3
+
+# 验证：多次刷新 http://localhost，查看各实例日志确认轮询
+```
+
+### 验证分布式 Session 共享
+
+```bash
+# 1. 登录（Nginx 路由到 app1）
+curl -X POST http://localhost/login -d "username=admin&password=xxx" -c cookies.txt
+
+# 2. 停掉 app1
+docker stop wg-app1
+
+# 3. 用同一 session 访问（Nginx 路由到 app2 或 app3）
+curl http://localhost/index -b cookies.txt
+# → 仍然保持登录状态（Session 从 Redis 加载）
+```
+
+### docker-compose 服务清单
+
+| 服务 | 容器名 | 端口 | 说明 |
+|------|--------|------|------|
+| nginx | wg-nginx | 80→80 | 负载均衡（weight 1:1:1） |
+| app1~3 | wg-app1/2/3 | 8082 | Spring Boot 实例 |
+| mysql | wg-mysql | 3306 | 持久化数据库 |
+| redis | wg-redis | 6379 | 共享 Session 存储 |
 
 ---
 
