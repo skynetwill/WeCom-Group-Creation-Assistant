@@ -320,7 +320,7 @@
         .dot:nth-child(3) { animation-delay: 0.4s; }
 
         /* Modal overlay */
-        .modal-overlay {
+        .pwd-modal-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
@@ -331,11 +331,11 @@
             justify-content: center;
         }
 
-        .modal-overlay.show {
+        .pwd-modal-overlay.show {
             display: flex;
         }
 
-        .modal-dialog {
+        .pwd-modal-box {
             position: relative;
             z-index: 1;
             background: #fff;
@@ -353,20 +353,20 @@
             to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        .modal-dialog h3 {
+        .pwd-modal-box h3 {
             font-size: 20px;
             font-weight: 700;
             color: var(--text-primary);
             margin-bottom: 8px;
         }
 
-        .modal-dialog .modal-desc {
+        .pwd-modal-box .modal-desc {
             font-size: 14px;
             color: var(--text-muted);
             margin-bottom: 24px;
         }
 
-        .modal-dialog .btn-primary {
+        .pwd-modal-box .btn-primary {
             width: 100%;
             padding: 12px;
             border: none;
@@ -379,16 +379,16 @@
             margin-top: 8px;
         }
 
-        .modal-dialog .btn-primary:hover {
+        .pwd-modal-box .btn-primary:hover {
             background: var(--primary-dark);
         }
 
-        .modal-dialog .btn-primary:disabled {
+        .pwd-modal-box .btn-primary:disabled {
             opacity: 0.65;
             cursor: not-allowed;
         }
 
-        .modal-dialog .btn-secondary {
+        .pwd-modal-box .btn-secondary {
             width: 100%;
             padding: 12px;
             border: 1.5px solid var(--border);
@@ -401,7 +401,7 @@
             margin-top: 8px;
         }
 
-        .modal-dialog .btn-secondary:hover {
+        .pwd-modal-box .btn-secondary:hover {
             background: #f8fafc;
         }
 
@@ -449,7 +449,7 @@
                 padding: 36px 24px;
             }
 
-            .modal-dialog {
+            .pwd-modal-box {
                 margin: 20px;
                 padding: 24px;
             }
@@ -507,8 +507,8 @@
     </div>
 
     <!-- Password Change Modal -->
-    <div class="modal-overlay" id="changePwdModal">
-        <div class="modal-dialog">
+    <div class="pwd-modal-overlay" id="changePwdModal">
+        <div class="pwd-modal-box">
             <h3>修改密码</h3>
             <p class="modal-desc">首次登录需要修改默认密码以确保账号安全</p>
             <div id="pwdAlertBox" class="alert-error" style="display:none"></div>
