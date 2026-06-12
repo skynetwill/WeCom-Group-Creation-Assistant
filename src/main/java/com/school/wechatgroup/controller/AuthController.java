@@ -141,7 +141,8 @@ public class AuthController {
             // 并发会话控制
             if (sessionRegistry != null && authProperties != null) {
                 boolean registered = sessionRegistry.registerSession(
-                        loginResult.getUserId(), newSession.getId(), authProperties.getMaxSessions());
+                        loginResult.getUserId(), newSession.getId(), clientIp,
+                        authProperties.getMaxSessions());
                 if (!registered) {
                     log.info("用户 {} 超过最大会话数限制", loginResult.getUserId());
                 }
@@ -431,6 +432,7 @@ public class AuthController {
         // 并发会话
         if (sessionRegistry != null && authProperties != null) {
             sessionRegistry.registerSession(pendingUser, tempSession.getId(),
+                    "MFA-login",
                     authProperties.getMaxSessions());
         }
 

@@ -2,58 +2,51 @@ package com.school.wechatgroup.service;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 /**
- * 登录限流服务
- * 从 AuthController 分离，避免 @Scheduled 与 @RestController 混合
+ * 登录限流服务 — Redis 共享实现
+ *
+ * Redis 数据结构：
+ *   ratelimit:{ip}:{window_second} → INCR 计数，EXPIRE 自动过期
+ *   滑动窗口：60 秒内最多 5 次，每次请求 INCR 判断是否超阈值
  */
 @Component
 public class RateLimitService {
 
     private static final Logger log = LoggerFactory.getLogger(RateLimitService.class);
-
-    private final ConcurrentHashMap<String, Integer> loginAttempts = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<String, Long> attemptWindowStart = new ConcurrentHashMap<>();
+    private static final String KEY_PREFIX = "ratelimit:";
     private static final int MAX_ATTEMPTS = 5;
-    private static final long WINDOW_MS = 60_000;
+    private static final long WINDOW_SECONDS = 60;
+
+    private final StringRedisTemplate redis;
+
+    public RateLimitService(StringRedisTemplate redis) {
+        this.redis = redis;
+    }
 
     /**
-     * 检查是否被限流
+     * 检查是否被限流（所有实例共享计数）
      */
     public boolean isRateLimited(String ip) {
-        long now = System.currentTimeMillis();
-        Long windowStart = attemptWindowStart.get(ip);
-        if (windowStart == null || now - windowStart > WINDOW_MS) {
-            attemptWindowStart.put(ip, now);
-            loginAttempts.put(ip, 1);
-            return false;
+        long window = System.currentTimeMillis() / 1000 / WINDOW_SECONDS;
+        String key = KEY_PREFIX + ip + ":" + window;
+
+        Long count = redis.opsForValue().increment(key);
+        if (count != null && count == 1) {
+            redis.expire(key, WINDOW_SECONDS * 2, TimeUnit.SECONDS);
         }
-        int attempts = loginAttempts.merge(ip, 1, Integer::sum);
-        return attempts > MAX_ATTEMPTS;
+        return count != null && count > MAX_ATTEMPTS;
     }
 
     /**
-     * 清除指定 IP 的限流记录（登录成功后）
+     * 清除指定 IP 的限流记录
      */
     public void clear(String ip) {
-        loginAttempts.remove(ip);
-        attemptWindowStart.remove(ip);
-    }
-
-    @Scheduled(fixedRate = 300000)
-    public void cleanExpiredEntries() {
-        long now = System.currentTimeMillis();
-        attemptWindowStart.keySet().removeIf(ip -> {
-            Long time = attemptWindowStart.get(ip);
-            if (time != null && now - time > WINDOW_MS * 2) {
-                loginAttempts.remove(ip);
-                return true;
-            }
-            return false;
-        });
+        long window = System.currentTimeMillis() / 1000 / WINDOW_SECONDS;
+        redis.delete(KEY_PREFIX + ip + ":" + window);
     }
 }
