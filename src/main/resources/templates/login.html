@@ -219,6 +219,20 @@
             color: var(--primary);
         }
 
+        /* Remember me checkbox */
+        .remember-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .remember-row input[type="checkbox"] {
+            margin-right: 8px;
+            accent-color: var(--primary);
+        }
+
         /* Login button */
         .btn-login {
             width: 100%;
@@ -270,6 +284,20 @@
 
         .alert-error.show { display: block; }
 
+        .alert-info {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-left: 4px solid #2563eb;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #1e40af;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .alert-info.show { display: block; }
+
         @keyframes fadeInShake {
             0% { opacity: 0; transform: translateX(-4px); }
             20% { transform: translateX(4px); }
@@ -289,6 +317,95 @@
         .dot { animation: dots 1.4s infinite; }
         .dot:nth-child(2) { animation-delay: 0.2s; }
         .dot:nth-child(3) { animation-delay: 0.4s; }
+
+        /* Modal overlay */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-dialog {
+            background: #fff;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            animation: modalIn 0.3s ease;
+        }
+
+        @keyframes modalIn {
+            from { opacity: 0; transform: scale(0.95) translateY(-10px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .modal-dialog h3 {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 8px;
+        }
+
+        .modal-dialog .modal-desc {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .modal-dialog .btn-primary {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            background: var(--primary);
+            color: #fff;
+            margin-top: 8px;
+        }
+
+        .modal-dialog .btn-primary:hover {
+            background: var(--primary-dark);
+        }
+
+        .modal-dialog .btn-primary:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .modal-dialog .btn-secondary {
+            width: 100%;
+            padding: 12px;
+            border: 1.5px solid var(--border);
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            background: #fff;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .modal-dialog .btn-secondary:hover {
+            background: #f8fafc;
+        }
+
+        .password-hint {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 6px;
+            margin-bottom: 8px;
+        }
 
         /* Responsive */
         @media (max-width: 768px) {
@@ -326,11 +443,16 @@
             .login-panel {
                 padding: 36px 24px;
             }
+
+            .modal-dialog {
+                margin: 20px;
+                padding: 24px;
+            }
         }
     </style>
 </head>
 <body>
-    <div class="login-container">
+    <div class="login-container" id="loginCard">
         <!-- Left: Brand Panel -->
         <div class="brand-panel">
             <div class="brand-icon">
@@ -350,6 +472,7 @@
                 <div class="divider-line"></div>
 
                 <div id="alertBox" class="alert-error" style="display:none"></div>
+                <div id="infoBox" class="alert-info" style="display:none"></div>
 
                 <form id="loginForm">
                     <div class="form-group">
@@ -366,6 +489,10 @@
                                    placeholder="密码" required autocomplete="current-password">
                         </div>
                     </div>
+                    <div class="remember-row">
+                        <input type="checkbox" id="rememberMe">
+                        <label for="rememberMe">记住我（14天内自动登录）</label>
+                    </div>
                     <button type="submit" class="btn-login" id="loginBtn">
                         登录系统
                     </button>
@@ -374,31 +501,85 @@
         </div>
     </div>
 
+    <!-- Password Change Modal -->
+    <div class="modal-overlay" id="changePwdModal">
+        <div class="modal-dialog">
+            <h3>修改密码</h3>
+            <p class="modal-desc">首次登录需要修改默认密码以确保账号安全</p>
+            <div id="pwdAlertBox" class="alert-error" style="display:none"></div>
+            <form id="changePwdForm">
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <i class="bi bi-lock input-icon"></i>
+                        <input type="password" class="form-input" id="oldPassword"
+                               placeholder="当前密码" required autocomplete="off">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="input-wrapper">
+                        <i class="bi bi-shield-lock input-icon"></i>
+                        <input type="password" class="form-input" id="newPassword"
+                               placeholder="新密码" required autocomplete="off">
+                    </div>
+                    <p class="password-hint">密码要求：至少6位，包含字母和数字</p>
+                </div>
+                <button type="submit" class="btn-primary" id="changePwdBtn">
+                    确认修改
+                </button>
+                <button type="button" class="btn-secondary" id="skipChangePwd">
+                    暂不修改
+                </button>
+            </form>
+        </div>
+    </div>
+
     <script>
-        const alertBox = document.getElementById('alertBox');
-        const loginBtn = document.getElementById('loginBtn');
+        var alertBox = document.getElementById('alertBox');
+        var infoBox = document.getElementById('infoBox');
+        var loginBtn = document.getElementById('loginBtn');
+        var changePwdModal = document.getElementById('changePwdModal');
+        var pwdAlertBox = document.getElementById('pwdAlertBox');
+        var changePwdBtn = document.getElementById('changePwdBtn');
+        var loginCard = document.getElementById('loginCard');
 
         function showAlert(msg) {
             alertBox.textContent = msg;
             alertBox.style.display = 'block';
             alertBox.classList.add('show');
+            infoBox.style.display = 'none';
             setTimeout(function() { alertBox.classList.remove('show'); }, 100);
+        }
+
+        function showInfo(msg) {
+            infoBox.textContent = msg;
+            infoBox.style.display = 'block';
+            infoBox.classList.add('show');
+            alertBox.style.display = 'none';
+            setTimeout(function() { infoBox.classList.remove('show'); }, 100);
+        }
+
+        // Check for mustChangePassword flag on page load
+        var urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('mustChange') === '1') {
+            showInfo('请先修改密码后再继续');
         }
 
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             e.preventDefault();
 
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            var username = document.getElementById('username').value;
+            var password = document.getElementById('password').value;
+            var rememberMe = document.getElementById('rememberMe').checked;
 
             loginBtn.disabled = true;
-            loginBtn.innerHTML =
-                '验证中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>';
+            loginBtn.innerHTML = '验证中<span class="dot">.</span><span class="dot">.</span><span class="dot">.</span>';
             alertBox.style.display = 'none';
+            infoBox.style.display = 'none';
 
-            const formData = new FormData();
+            var formData = new FormData();
             formData.append('username', username);
             formData.append('password', password);
+            formData.append('rememberMe', rememberMe);
 
             fetch('/api/auth/csrf')
                 .then(function(r) { return r.json(); })
@@ -412,11 +593,16 @@
                 .then(function(r) { return r.json(); })
                 .then(function(data) {
                     if (data.success) {
-                        var loginCard = document.querySelector('.login-container');
-                        loginCard.style.transform = 'scale(0.95)';
-                        loginCard.style.opacity = '0';
-                        loginCard.style.transition = 'all 0.4s ease';
-                        setTimeout(function() { window.location.href = '/index'; }, 400);
+                        if (data.mustChangePassword) {
+                            // Show password change modal
+                            changePwdModal.classList.add('show');
+                            document.getElementById('oldPassword').value = password;
+                        } else {
+                            loginCard.style.transform = 'scale(0.95)';
+                            loginCard.style.opacity = '0';
+                            loginCard.style.transition = 'all 0.4s ease';
+                            setTimeout(function() { window.location.href = '/index'; }, 400);
+                        }
                     } else {
                         showAlert(data.message || '用户名或密码错误');
                     }
@@ -428,10 +614,67 @@
                 });
         });
 
+        // Password change form
+        document.getElementById('changePwdForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var oldPwd = document.getElementById('oldPassword').value;
+            var newPwd = document.getElementById('newPassword').value;
+
+            changePwdBtn.disabled = true;
+            changePwdBtn.textContent = '修改中...';
+            pwdAlertBox.style.display = 'none';
+
+            var formData = new FormData();
+            formData.append('oldPassword', oldPwd);
+            formData.append('newPassword', newPwd);
+
+            fetch('/api/auth/csrf')
+                .then(function(r) { return r.json(); })
+                .then(function(csrf) {
+                    return fetch('/api/auth/change-password', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': csrf.token },
+                        body: formData
+                    });
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        pwdAlertBox.style.display = 'none';
+                        window.location.href = '/login';
+                    } else {
+                        pwdAlertBox.textContent = data.message || '修改失败';
+                        pwdAlertBox.style.display = 'block';
+                    }
+                })
+                .catch(function() {
+                    pwdAlertBox.textContent = '网络错误';
+                    pwdAlertBox.style.display = 'block';
+                })
+                .then(function() {
+                    changePwdBtn.disabled = false;
+                    changePwdBtn.textContent = '确认修改';
+                });
+        });
+
+        // Skip password change
+        document.getElementById('skipChangePwd').addEventListener('click', function() {
+            changePwdModal.classList.remove('show');
+            loginCard.style.transform = 'scale(0.95)';
+            loginCard.style.opacity = '0';
+            loginCard.style.transition = 'all 0.4s ease';
+            setTimeout(function() { window.location.href = '/index'; }, 400);
+        });
+
         // Enter key to submit
         document.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' && !loginBtn.disabled) {
-                document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+            if (e.key === 'Enter') {
+                if (changePwdModal.classList.contains('show') && !changePwdBtn.disabled) {
+                    document.getElementById('changePwdForm').dispatchEvent(new Event('submit'));
+                } else if (!loginBtn.disabled) {
+                    document.getElementById('loginForm').dispatchEvent(new Event('submit'));
+                }
             }
         });
     </script>

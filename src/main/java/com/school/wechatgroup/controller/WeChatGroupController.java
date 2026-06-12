@@ -8,6 +8,8 @@ import com.school.wechatgroup.util.SecurityUtils;
 import com.school.wechatgroup.service.WeChatGroupService;
 import com.school.wechatgroup.task.WeChatTokenManager;
 import com.school.wechatgroup.vo.CreateGroupResultVO;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.apache.poi.ss.usermodel.Row;
@@ -112,7 +114,8 @@ public class WeChatGroupController {
                 return null;
             }
             String url = "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo?access_token=" + token + "&code=" + code;
-            Map<String, Object> resp = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> resp = restTemplate.exchange(url, HttpMethod.GET, null,
+                new ParameterizedTypeReference<Map<String, Object>>() {}).getBody();
             if (resp != null && safeParseErrcode(resp.get("errcode")) == 0) {
                 return (String) resp.get("UserId");
             }

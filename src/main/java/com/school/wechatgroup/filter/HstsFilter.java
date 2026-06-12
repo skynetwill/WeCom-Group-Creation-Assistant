@@ -6,42 +6,42 @@ import jakarta.servlet.FilterConfig;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
 /**
- * 安全响应头过滤器 — 为所有 HTTP 响应添加安全头
+ * HSTS (HTTP Strict Transport Security) 过滤器
+ * 强制浏览器只通过 HTTPS 访问，防止 SSL 剥离攻击
+ *
+ * max-age=31536000: 一年内浏览器自动将 HTTP 升级为 HTTPS
+ * includeSubDomains: 也适用于所有子域名
  */
 @Component
-@Order(Ordered.HIGHEST_PRECEDENCE)
-public class SecurityFilter implements Filter {
+@Order(3)
+public class HstsFilter implements Filter {
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain)
             throws IOException, ServletException {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
+        HttpServletRequest httpRequest = (HttpServletRequest) request;
 
-        // 防 XSS：禁止浏览器 MIME 类型嗅探
-        httpResponse.setHeader("X-Content-Type-Options", "nosniff");
-        // 防点击劫持：禁止页面被嵌入 frame
-        httpResponse.setHeader("X-Frame-Options", "DENY");
-        // 启用浏览器 XSS 过滤器
-        httpResponse.setHeader("X-XSS-Protection", "1; mode=block");
-        // 限制 Referer 传递
-        httpResponse.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+        // 仅在 HTTPS 请求时设置 HSTS
+        if (httpRequest.isSecure()) {
+            httpResponse.setHeader("Strict-Transport-Security",
+                    "max-age=31536000; includeSubDomains; preload");
+        }
 
         chain.doFilter(request, response);
     }
 
     @Override
-    public void init(FilterConfig filterConfig) {
-    }
+    public void init(FilterConfig filterConfig) { }
 
     @Override
-    public void destroy() {
-    }
+    public void destroy() { }
 }

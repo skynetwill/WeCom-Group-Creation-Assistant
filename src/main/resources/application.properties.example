@@ -7,9 +7,33 @@ spring.profiles.active=dev
 # 应用访问地址（OAuth回调用）
 app.base-url=请替换为你的应用访问地址（如 https://xxx.ngrok-free.dev）
 
-# 登录认证默认账号
+# 登录认证：
+#   enabled - 是否启用认证（在 profile 文件中设置，如 application-dev.properties）
+#   enabled=false 时所有认证功能关闭，使用 OAuth 流程
 app.auth.default-username=admin
 app.auth.default-password=请替换为你的管理员密码
+
+# 账号锁定策略
+#   lock-threshold - 连续失败多少次后锁定
+#   lock-duration - 锁定分钟数
+app.auth.lock-threshold=5
+app.auth.lock-duration=15
+
+# 并发会话控制
+#   max-sessions - 同一账号最大会话数（-1=不限制）
+app.auth.max-sessions=5
+
+# Remember-Me 有效期（天）
+app.auth.remember-me-validity-days=14
+
+# 密码策略
+#   password-expiry-days - 密码过期天数（0=永不过期）
+#   password-history-size - 不可重复使用的最近密码数（0=不限制）
+app.auth.password-expiry-days=90
+app.auth.password-history-size=5
+
+# MFA 多因素认证（可选，需要时在 profile 文件中开启）
+# app.auth.mfa.enabled=true
 
 # JPA 公共配置
 spring.jpa.properties.hibernate.dialect=org.hibernate.dialect.MySQLDialect

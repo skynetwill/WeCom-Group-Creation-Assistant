@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -35,7 +37,8 @@ public class WeChatTokenManager {
                 properties.getCorpid(), properties.getCorpsecret());
 
         try {
-            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            Map<String, Object> response = restTemplate.exchange(url, HttpMethod.GET, null,
+                    new ParameterizedTypeReference<Map<String, Object>>() {}).getBody();
             if (response != null && safeParseErrcode(response.get("errcode")) == 0) {
                 this.accessToken = (String) response.get("access_token");
                 log.info("Token 更新成功");

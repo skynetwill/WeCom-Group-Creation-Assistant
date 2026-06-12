@@ -72,6 +72,12 @@
             <artifactId>spring-security-crypto</artifactId>
         </dependency>
 
+        <!-- Spring AOP: 方法级权限注解支持 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- Jakarta注解（解决@PostConstruct找不到的问题） -->
         <dependency>
             <groupId>jakarta.annotation</groupId>
