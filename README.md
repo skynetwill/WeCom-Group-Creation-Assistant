@@ -272,7 +272,7 @@ src/main/java/com/school/wechatgroup/
 |------|------|------|
 | `enabled` | false | 启用表单登录（false=纯 OAuth2） |
 | `default-username` | admin | 默认管理员 |
-| `default-password` | admin123 | 默认密码（首次强制改密） |
+| `default-password` | (随机生成) | 未配置时生成随机密码，日志中打印 |
 | `lock-threshold` | 5 | 失败锁定阈值 |
 | `lock-duration` | 15 | 锁定分钟数 |
 | `max-sessions` | 5 | 最大并发会话 |
@@ -315,6 +315,29 @@ src/main/java/com/school/wechatgroup/
 | Redis | 7 | 共享状态 |
 | Nginx | alpine | 负载均衡 |
 | Docker Compose | 3.8 | 容器编排 |
+
+---
+
+## 运行时验证
+
+本地 `./mvnw spring-boot:run` 实测 14 项全部通过：
+
+```
+✅ 登录(正确密码)          → success:true, mustChangePassword:true
+✅ 认证状态                 → authenticated:true, role:ADMIN
+✅ 用户 Profile             → 含 authorities/密码到期/账户状态/审计字段
+✅ 修改密码                 → 密码修改成功，请重新登录
+✅ 新密码登录               → mustChangePassword:false
+✅ 错误密码                 → 用户名或密码错误
+✅ CSRF 防护               → 无 token 返回 无效请求
+✅ 管理员会话查询           → 返回活跃会话列表
+✅ 首页(已登录)             → HTTP 200
+✅ 登出                     → success:true
+✅ 登出后状态               → authenticated:false
+✅ 锁定测试(1-4次错误)      → 用户名或密码错误
+✅ 锁定测试(第5次)          → 账号已被锁定，请15分钟后重试
+✅ 限流测试(第6次)          → 登录尝试次数过多
+```
 
 ---
 
