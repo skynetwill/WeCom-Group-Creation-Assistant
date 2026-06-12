@@ -71,6 +71,19 @@
             <artifactId>spring-kafka</artifactId>
         </dependency>
 
+        <!-- ShardingSphere-JDBC：分库分表中间件 -->
+        <dependency>
+            <groupId>org.apache.shardingsphere</groupId>
+            <artifactId>shardingsphere-jdbc</artifactId>
+            <version>5.5.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.apache.shardingsphere</groupId>
+                    <artifactId>shardingsphere-test-util</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
         <!-- MyBatis-Plus：国内公司主流 ORM（与 JPA 并存） -->
         <dependency>
             <groupId>com.baomidou</groupId>

@@ -1,0 +1,46 @@
+name: CI/CD Pipeline
+
+# GitHub Actions — 持续集成/持续部署
+# 每次 push 到 main/distributed/docker-distributed 自动执行
+
+on:
+  push:
+    branches: [main, monolithic, distributed, docker-distributed]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+
+    steps:
+      - name: 1. 检出代码
+        uses: actions/checkout@v4
+
+      - name: 2. 设置 JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+          cache: maven
+
+      - name: 3. 编译 + 单元测试
+        run: ./mvnw test -B
+
+      - name: 4. 打包
+        run: ./mvnw package -DskipTests -B
+
+      - name: 5. 构建 Docker 镜像
+        run: docker build -t wechat-group:${{ github.sha }} .
+
+      - name: 6. 推送到容器仓库（示例，需要配置 secrets）
+        if: github.ref == 'refs/heads/main'
+        run: |
+          echo "docker tag wechat-group:${{ github.sha }} registry.example.com/wechat-group:${{ github.sha }}"
+          echo "docker push registry.example.com/wechat-group:${{ github.sha }}"
+          # 实际需要配置 DOCKER_REGISTRY_URL + DOCKER_USERNAME + DOCKER_PASSWORD
