@@ -325,7 +325,8 @@
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
             background: rgba(0,0,0,0.5);
-            z-index: 9999;
+            z-index: 99999;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
         }
@@ -335,6 +336,8 @@
         }
 
         .modal-dialog {
+            position: relative;
+            z-index: 1;
             background: #fff;
             border-radius: 16px;
             padding: 32px;
@@ -342,6 +345,7 @@
             max-width: 420px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.15);
             animation: modalIn 0.3s ease;
+            margin: 20px;
         }
 
         @keyframes modalIn {
@@ -535,7 +539,6 @@
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
         var alertBox = document.getElementById('alertBox');
         var infoBox = document.getElementById('infoBox');
         var loginBtn = document.getElementById('loginBtn');
@@ -688,7 +691,6 @@
                     document.getElementById('loginForm').dispatchEvent(new Event('submit'));
                 }
             }
-        });
         });
     </script>
 </body>
