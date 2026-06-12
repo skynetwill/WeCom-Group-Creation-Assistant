@@ -59,6 +59,18 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Elasticsearch：搜索引擎（学习演示，默认关闭） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
+
+        <!-- Apache Kafka：流处理消息队列（学习演示，默认关闭） -->
+        <dependency>
+            <groupId>org.springframework.kafka</groupId>
+            <artifactId>spring-kafka</artifactId>
+        </dependency>
+
         <!-- MyBatis-Plus：国内公司主流 ORM（与 JPA 并存） -->
         <dependency>
             <groupId>com.baomidou</groupId>
