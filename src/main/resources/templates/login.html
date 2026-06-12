@@ -619,25 +619,35 @@
         // Password change form
         document.getElementById('changePwdForm').addEventListener('submit', function(e) {
             e.preventDefault();
+            e.stopPropagation();
 
             var oldPwd = document.getElementById('oldPassword').value;
             var newPwd = document.getElementById('newPassword').value;
+
+            if (!oldPwd || !newPwd) {
+                pwdAlertBox.textContent = '请填写当前密码和新密码';
+                pwdAlertBox.style.display = 'block';
+                return;
+            }
 
             changePwdBtn.disabled = true;
             changePwdBtn.textContent = '修改中...';
             pwdAlertBox.style.display = 'none';
 
-            var formData = new FormData();
-            formData.append('oldPassword', oldPwd);
-            formData.append('newPassword', newPwd);
-
-            fetch('/api/auth/csrf')
-                .then(function(r) { return r.json(); })
+            fetch('/api/auth/csrf', { credentials: 'same-origin' })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('CSRF fetch failed');
+                    return r.json();
+                })
                 .then(function(csrf) {
+                    var fd = new FormData();
+                    fd.append('oldPassword', oldPwd);
+                    fd.append('newPassword', newPwd);
                     return fetch('/api/auth/change-password', {
                         method: 'POST',
                         headers: { 'X-CSRF-TOKEN': csrf.token },
-                        body: formData
+                        body: fd,
+                        credentials: 'same-origin'
                     });
                 })
                 .then(function(r) { return r.json(); })
@@ -650,11 +660,11 @@
                         pwdAlertBox.style.display = 'block';
                     }
                 })
-                .catch(function() {
-                    pwdAlertBox.textContent = '网络错误';
+                .catch(function(err) {
+                    pwdAlertBox.textContent = '网络错误: ' + (err.message || '');
                     pwdAlertBox.style.display = 'block';
                 })
-                .then(function() {
+                .finally(function() {
                     changePwdBtn.disabled = false;
                     changePwdBtn.textContent = '确认修改';
                 });

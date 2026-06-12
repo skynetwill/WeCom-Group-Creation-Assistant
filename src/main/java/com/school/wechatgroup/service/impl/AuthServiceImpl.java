@@ -68,8 +68,8 @@ public class AuthServiceImpl implements AuthService {
     public void initDefaultAdmin() {
         if (userRepository.count() == 0) {
             String password = authProperties.getDefaultPassword();
-            // 密码未配置或使用常见默认值时，生成随机安全密码
-            if (password == null || password.isEmpty() || "admin123".equals(password)) {
+            // 密码为空时才生成随机密码；配置了具体密码（包括 admin123）则使用配置值
+            if (password == null || password.isEmpty()) {
                 byte[] randomBytes = new byte[12];
                 new SecureRandom().nextBytes(randomBytes);
                 password = Base64.getUrlEncoder().withoutPadding().encodeToString(randomBytes);
@@ -77,6 +77,8 @@ public class AuthServiceImpl implements AuthService {
                 log.warn("未配置默认管理员密码，已生成随机密码: {}", password);
                 log.warn("请复制上面的密码，或修改 app.auth.default-password");
                 log.warn("==========================================");
+            } else if ("admin123".equals(password)) {
+                log.warn("安全提示: 正在使用默认密码 'admin123'，生产环境请务必修改！");
             }
             AppUser admin = new AppUser();
             admin.setUsername(authProperties.getDefaultUsername());
