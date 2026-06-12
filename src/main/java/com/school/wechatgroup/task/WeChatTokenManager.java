@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpMethod;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Recover;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -71,6 +74,8 @@ public class WeChatTokenManager {
         }
     }
 
+    @Retryable(retryFor = Exception.class, maxAttempts = 3,
+            backoff = @Backoff(delay = 2000, multiplier = 2))
     private void doRefresh() {
         String url = String.format(
                 "https://qyapi.weixin.qq.com/cgi-bin/gettoken?corpid=%s&corpsecret=%s",
@@ -105,6 +110,11 @@ public class WeChatTokenManager {
             token = redis.opsForValue().get(TOKEN_KEY);
         }
         return token;
+    }
+
+    @Recover
+    public void recoverTokenRefresh(Exception e) {
+        log.error("Token 刷新重试 3 次均失败，请检查网络和企业微信 API 状态");
     }
 
     private int safeParseErrcode(Object errcode) {
