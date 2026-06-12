@@ -46,9 +46,7 @@ public class DaoAuthenticationProvider implements AuthenticationProvider {
             long minutes = java.time.Duration.between(LocalDateTime.now(), user.getLockedUntil()).toMinutes() + 1;
             throw new LockedException("账号已被锁定，请 " + minutes + " 分钟后重试");
         }
-        if (Boolean.TRUE.equals(user.getMustChangePassword())) {
-            throw new CredentialsExpiredException("密码已过期，请修改密码");
-        }
+        // mustChangePassword 由 AuthServiceImpl.doLogin() 通过 LoginResultVO 返回，不在此处阻断
 
         // 密码验证
         if (!passwordEncoder.matches(password, user.getPassword())) {

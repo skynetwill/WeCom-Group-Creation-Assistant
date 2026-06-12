@@ -97,7 +97,7 @@ public class SecurityBeanConfig {
             // 2. 表单登录
             .formLogin(form -> form
                 .loginPage("/login")
-                .loginProcessingUrl("/api/auth/login")
+                .loginProcessingUrl("/api/auth/dsl-login")
                 .defaultSuccessUrl("/index")
             )
             // 3. 异常处理

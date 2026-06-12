@@ -105,7 +105,6 @@ public class AuthController {
                     // 暂存用户名到 session 用于 MFA 验证（尚未创建完整登录状态）
                     HttpSession oldSession = request.getSession(false);
                     if (oldSession != null) oldSession.invalidate();
-                    request.changeSessionId();
                     HttpSession tempSession = request.getSession(true);
                     tempSession.setAttribute("MFA_PENDING_USER", loginResult.getUserId());
                     tempSession.setAttribute("MFA_PENDING_NICKNAME", loginResult.getNickname());
@@ -118,12 +117,11 @@ public class AuthController {
                 }
             }
 
-            // Session fixation protection: invalidate old session + changeSessionId()
+            // Session fixation protection: 销毁旧 session，创建全新 session
             HttpSession oldSession = request.getSession(false);
             if (oldSession != null) {
                 oldSession.invalidate();
             }
-            request.changeSessionId();
             HttpSession newSession = request.getSession(true);
             newSession.setAttribute(SessionKeys.LOGIN_USER_ID, loginResult.getUserId());
             newSession.setAttribute(SessionKeys.LOGIN_NICKNAME, loginResult.getNickname());
